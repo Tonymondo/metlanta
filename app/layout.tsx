@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Outfit, Bebas_Neue } from 'next/font/google'
 import './globals.css'
+import './landing.css'
 
 const outfit = Outfit({
   subsets: ['latin'],
