@@ -1,7 +1,18 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Image from 'next/image'
+
+async function buyTicket(eventName: string, tierName: string, price: number) {
+  const res = await fetch('/api/checkout', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ eventName, tierName, price }),
+  })
+  const data = await res.json()
+  if (data.url) window.location.href = data.url
+  else alert('Something went wrong. Please try again.')
+}
 
 /* ── Data ──────────────────────────────────────────────────────────────────── */
 
@@ -14,6 +25,8 @@ const EVENTS = [
     location: 'Atlanta, GA',
     type: 'After Prom',
     price: 'From $25',
+    ticketPrice: 25,
+    tierName: 'General',
     going: '1.2k going',
     hot: true,
     bg: 'linear-gradient(135deg, #200000 0%, #3d0808 40%, #100000 100%)',
@@ -26,6 +39,8 @@ const EVENTS = [
     location: 'Decatur, GA',
     type: 'Kickback',
     price: 'Free',
+    ticketPrice: 0,
+    tierName: 'RSVP',
     going: '340 going',
     hot: false,
     bg: 'linear-gradient(135deg, #050d05 0%, #0d1a0d 100%)',
@@ -38,6 +53,8 @@ const EVENTS = [
     location: 'Buckhead, GA',
     type: 'Day Party',
     price: 'From $20',
+    ticketPrice: 20,
+    tierName: 'General',
     going: '870 going',
     hot: true,
     bg: 'linear-gradient(135deg, #0a000a 0%, #1a0a1e 100%)',
@@ -50,6 +67,8 @@ const EVENTS = [
     location: 'Stone Mountain, GA',
     type: 'School Event',
     price: 'From $20',
+    ticketPrice: 20,
+    tierName: 'General',
     going: '580 going',
     hot: false,
     bg: 'linear-gradient(135deg, #070010 0%, #10001a 100%)',
@@ -62,6 +81,8 @@ const EVENTS = [
     location: 'East Atlanta, GA',
     type: 'Pop-Up',
     price: 'From $15',
+    ticketPrice: 15,
+    tierName: 'General',
     going: '720 going',
     hot: false,
     bg: 'linear-gradient(135deg, #100800 0%, #1e1000 100%)',
@@ -74,6 +95,8 @@ const EVENTS = [
     location: 'Midtown, GA',
     type: 'Nightlife',
     price: 'From $35',
+    ticketPrice: 35,
+    tierName: 'General',
     going: '990 going',
     hot: true,
     bg: 'linear-gradient(135deg, #0d0a00 0%, #1a1400 100%)',
@@ -323,6 +346,80 @@ function Hero() {
 }
 
 /* ── Events Section ────────────────────────────────────────────────────────── */
+function EventCard({ e, i }: { e: typeof EVENTS[number]; i: number }) {
+  const [loading, setLoading] = useState(false)
+
+  async function handleBuy() {
+    if (e.ticketPrice === 0) return
+    setLoading(true)
+    await buyTicket(e.name, e.tierName, e.ticketPrice)
+    setLoading(false)
+  }
+
+  return (
+    <div className={`event-card reveal delay-${Math.min(i + 1, 4)}`}>
+      <div className="event-img">
+        <div className="event-img-bg" style={{ background: e.bg }} />
+        <div className="event-img-overlay" />
+        {e.hot && (
+          <div className="event-img-badge">
+            <span className="badge-dot" />
+            Trending
+          </div>
+        )}
+        <div className="event-img-price">{e.price}</div>
+      </div>
+
+      <div className="event-body">
+        <p className="event-name">{e.name}</p>
+        <div className="event-meta">
+          <div className="event-meta-row">
+            <svg className="event-meta-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            {e.date} · {e.time}
+          </div>
+          <div className="event-meta-row">
+            <svg className="event-meta-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+            </svg>
+            {e.location}
+          </div>
+        </div>
+        <div className="event-footer">
+          <div className="event-going">
+            <span className="event-going-dot" />
+            {e.going}
+          </div>
+          <span className="event-host">{e.host}</span>
+        </div>
+
+        <button
+          onClick={handleBuy}
+          disabled={loading}
+          style={{
+            width: '100%',
+            marginTop: 12,
+            padding: '10px',
+            background: e.ticketPrice === 0 ? 'rgba(74,222,128,0.1)' : '#E03030',
+            color: e.ticketPrice === 0 ? '#4ade80' : '#fff',
+            border: e.ticketPrice === 0 ? '1px solid rgba(74,222,128,0.2)' : 'none',
+            borderRadius: 10,
+            fontSize: 13,
+            fontWeight: 700,
+            fontFamily: 'inherit',
+            cursor: loading ? 'wait' : 'pointer',
+            opacity: loading ? 0.7 : 1,
+            transition: 'opacity 0.15s',
+          }}
+        >
+          {loading ? 'Redirecting...' : e.ticketPrice === 0 ? 'RSVP Free' : `Get Tickets · ${e.price}`}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function EventsSection() {
   const [tab, setTab] = useState('Trending')
 
@@ -339,60 +436,14 @@ function EventsSection() {
 
         <div className="events-tabs reveal delay-1">
           {['Trending', 'Soon', 'New'].map((t) => (
-            <button
-              key={t}
-              className={`tab${tab === t ? ' active' : ''}`}
-              onClick={() => setTab(t)}
-            >
+            <button key={t} className={`tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
               {t}
             </button>
           ))}
         </div>
 
         <div className="events-grid">
-          {EVENTS.map((e, i) => (
-            <a key={e.name} href="#events" className={`event-card reveal delay-${Math.min(i + 1, 4)}`}>
-              <div className="event-img">
-                <div
-                  className="event-img-bg"
-                  style={{ background: e.bg }}
-                />
-                <div className="event-img-overlay" />
-                {e.hot && (
-                  <div className="event-img-badge">
-                    <span className="badge-dot" />
-                    Trending
-                  </div>
-                )}
-                <div className="event-img-price">{e.price}</div>
-              </div>
-
-              <div className="event-body">
-                <p className="event-name">{e.name}</p>
-                <div className="event-meta">
-                  <div className="event-meta-row">
-                    <svg className="event-meta-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-                    </svg>
-                    {e.date} · {e.time}
-                  </div>
-                  <div className="event-meta-row">
-                    <svg className="event-meta-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-                    </svg>
-                    {e.location}
-                  </div>
-                </div>
-                <div className="event-footer">
-                  <div className="event-going">
-                    <span className="event-going-dot" />
-                    {e.going}
-                  </div>
-                  <span className="event-host">{e.host}</span>
-                </div>
-              </div>
-            </a>
-          ))}
+          {EVENTS.map((e, i) => <EventCard key={e.name} e={e} i={i} />)}
         </div>
       </div>
     </section>
