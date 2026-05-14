@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
+import { useSession, signOut } from 'next-auth/react'
 
 async function buyTicket(eventName: string, tierName: string, price: number) {
   const res = await fetch('/api/checkout', {
@@ -208,8 +209,10 @@ function useHeroCanvas() {
 /* ── Navbar ────────────────────────────────────────────────────────────────── */
 
 function Navbar() {
+  const { data: session, status } = useSession()
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
+  const [userMenu, setUserMenu] = useState(false)
 
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 40)
@@ -225,7 +228,6 @@ function Navbar() {
   const links = [
     { label: 'Events', href: '#events' },
     { label: 'Host', href: '#host' },
-    { label: 'Pricing', href: '#pricing' },
   ]
 
   return (
@@ -234,14 +236,7 @@ function Navbar() {
         <div className="nav-inner">
           <a href="/" className="nav-logo" aria-label="Metlanta">
             <div className="nav-logo-wrap">
-              <Image
-                src="/logo.png"
-                alt="Metlanta logo"
-                height={28}
-                width={62}
-                className="nav-logo-img"
-                priority
-              />
+              <Image src="/logo.png" alt="Metlanta logo" height={28} width={62} className="nav-logo-img" priority />
             </div>
             <span className="nav-wordmark">Metlanta</span>
           </a>
@@ -253,20 +248,37 @@ function Navbar() {
           </ul>
 
           <div className="nav-actions">
-            <a href="#login" className="nav-login">Log In</a>
-            <a href="#host" className="btn-nav">
-              Start Hosting
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </a>
+            {status === 'authenticated' && session?.user ? (
+              <div className="nav-user-menu" style={{ position: 'relative' }}>
+                <button className="nav-avatar-btn" onClick={() => setUserMenu((v) => !v)}>
+                  {session.user.image
+                    ? <Image src={session.user.image} alt="avatar" width={32} height={32} className="nav-avatar" />
+                    : <div className="nav-avatar-fallback">{session.user.name?.[0] ?? '?'}</div>
+                  }
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                </button>
+                {userMenu && (
+                  <div className="nav-dropdown">
+                    <p className="nav-dropdown-name">{session.user.name}</p>
+                    <a href="/dashboard" className="nav-dropdown-item" onClick={() => setUserMenu(false)}>Dashboard</a>
+                    <button className="nav-dropdown-item" onClick={() => signOut({ callbackUrl: '/' })}>Sign Out</button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <a href="/login" className="nav-login">Log In</a>
+                <a href="/login" className="btn-nav">
+                  Get Started
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </a>
+              </>
+            )}
           </div>
 
-          <button
-            className={`nav-burger${open ? ' open' : ''}`}
-            onClick={() => setOpen((v) => !v)}
-            aria-label="Menu"
-          >
+          <button className={`nav-burger${open ? ' open' : ''}`} onClick={() => setOpen((v) => !v)} aria-label="Menu">
             <span /><span /><span />
           </button>
         </div>
@@ -276,13 +288,20 @@ function Navbar() {
         {links.map((l) => (
           <a key={l.label} href={l.href} onClick={() => setOpen(false)}>{l.label}</a>
         ))}
+        {session ? (
+          <a href="/dashboard" onClick={() => setOpen(false)}>Dashboard</a>
+        ) : null}
         <div className="mobile-ctas">
-          <a href="#host" className="btn-primary" style={{ justifyContent: 'center' }} onClick={() => setOpen(false)}>
-            Start Hosting Free
-          </a>
-          <a href="#login" className="btn-ghost" style={{ justifyContent: 'center' }} onClick={() => setOpen(false)}>
-            Log In
-          </a>
+          {session ? (
+            <button className="btn-primary" style={{ justifyContent: 'center' }} onClick={() => { signOut({ callbackUrl: '/' }); setOpen(false) }}>
+              Sign Out
+            </button>
+          ) : (
+            <>
+              <a href="/login" className="btn-primary" style={{ justifyContent: 'center' }} onClick={() => setOpen(false)}>Get Started</a>
+              <a href="/login" className="btn-ghost" style={{ justifyContent: 'center' }} onClick={() => setOpen(false)}>Log In</a>
+            </>
+          )}
         </div>
       </div>
     </>
@@ -568,13 +587,13 @@ function RevenueSection() {
                 <span className="calc-val">$<RevenueCounter target={16000} /></span>
               </div>
               <div className="calc-row">
-                <span className="calc-label">Metlanta fee (5%)</span>
-                <span className="calc-val red-text">−$<RevenueCounter target={800} /></span>
+                <span className="calc-label">Metlanta fee (15%)</span>
+                <span className="calc-val red-text">−$<RevenueCounter target={2400} /></span>
               </div>
 
               <div className="calc-total">
                 <span className="calc-total-label">You take home</span>
-                <span className="calc-total-val">$<RevenueCounter target={15200} /></span>
+                <span className="calc-total-val">$<RevenueCounter target={13600} /></span>
               </div>
             </div>
           </div>
@@ -708,7 +727,7 @@ function CTASection() {
               Explore Events
             </a>
           </div>
-          <p className="cta-note">Free to list · 5% on ticket sales only · No monthly costs</p>
+          <p className="cta-note">Free to list · 15% on ticket sales only · No monthly costs</p>
 
           <div className="cta-or">
             <div className="or-line" />
