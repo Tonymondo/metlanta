@@ -19,7 +19,7 @@ const bebas = Bebas_Neue({
 })
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://metlanta1.vercel.app'),
+  metadataBase: new URL('https://metlanta.app'),
   title: 'Metlanta — Atlanta\'s Social Event Marketplace',
   description:
     'Discover parties, kickbacks, after proms, and day parties in Atlanta. Buy tickets or host your own event and get paid same night.',
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://metlanta1.vercel.app',
+    url: 'https://metlanta.app',
     siteName: 'Metlanta',
     title: 'Metlanta — Atlanta\'s Social Event Marketplace',
     description: 'Discover or host Atlanta\'s hottest events. Stripe-powered tickets. Same-night payouts.',
