@@ -79,7 +79,9 @@ function Navbar() {
     <>
       <header className={`nav${scrolled ? ' scrolled' : ''}`}>
         <div className="nav-inner">
-          <a href="/" className="nav-brand">METLANTA</a>
+          <a href="/" className="nav-brand">
+            <img src="/metlantalogo.png" alt="Metlanta" className="nav-logo-img" />
+          </a>
           <div className="nav-right">
             {!session && (
               <>
@@ -118,7 +120,7 @@ function Navbar() {
               </div>
             </div>
           ) : (
-            <span className="drawer-wordmark">METLANTA</span>
+            <img src="/metlantalogo.png" alt="Metlanta" className="drawer-logo-img" />
           )}
           <button className="drawer-close" onClick={close} aria-label="Close">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -462,7 +464,7 @@ function Footer() {
       <div className="wrap">
         <div className="footer-inner">
           <div className="footer-brand">
-            <span className="footer-wordmark">METLANTA</span>
+            <img src="/metlantalogo.png" alt="Metlanta" className="footer-logo-img" />
             <p className="footer-tag">Atlanta&apos;s social event marketplace.</p>
           </div>
           <div className="footer-links">
