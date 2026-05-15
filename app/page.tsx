@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, lazy, Suspense } from 'react'
 import Image from 'next/image'
 import { useSession, signOut } from 'next-auth/react'
 import type { DbEvent, DbTicketTier } from '@/lib/supabase'
+
+const Spline = lazy(() => import('@splinetool/react-spline'))
 
 /* ── Checkout ──────────────────────────────────────────────────────────────── */
 
@@ -236,13 +238,26 @@ function Navbar() {
 /* ── Hero ──────────────────────────────────────────────────────────────────── */
 
 function Hero() {
-  const canvasRef = useHeroCanvas()
+  const [splineReady, setSplineReady] = useState(false)
+
   return (
     <section className="hero">
+      {/* Spline 3D scene — full background */}
+      <div className={`hero-spline${splineReady ? ' ready' : ''}`} aria-hidden>
+        <Suspense fallback={null}>
+          <Spline
+            scene="https://prod.spline.design/0dd52ca5-9e44-4257-92f9-e371770cac66/scene.splinecode"
+            onLoad={() => setSplineReady(true)}
+            style={{ width: '100%', height: '100%' }}
+          />
+        </Suspense>
+      </div>
+
+      {/* Fallback gradient shown while Spline loads */}
       <div className="hero-orb hero-orb-1" aria-hidden />
       <div className="hero-orb hero-orb-2" aria-hidden />
-      <div className="hero-orb hero-orb-3" aria-hidden />
-      <canvas className="hero-canvas" ref={canvasRef} aria-hidden />
+
+      {/* Dark gradient overlay so text stays readable over 3D scene */}
       <div className="hero-overlay" aria-hidden />
 
       <div className="hero-content">
