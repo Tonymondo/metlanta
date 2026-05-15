@@ -244,15 +244,15 @@ function EventCard({ event }: { event: DbEvent }) {
 
   return (
     <div className="event-card">
-      <div className="event-img" style={{ background: bg }}>
-        {event.image_url && (
-          <Image src={event.image_url} alt={event.title} fill className="event-img-photo" />
+      <a href={`/events/${event.id}`} className="event-img" style={{ background: bg }}>
+        {(event.flyer_url || event.image_url) && (
+          <Image src={event.flyer_url ?? event.image_url!} alt={event.title} fill className="event-img-photo" />
         )}
         <div className="event-img-overlay" />
         {event.event_type && (
           <span className="event-type-badge">{event.event_type.replace(/_/g, ' ')}</span>
         )}
-      </div>
+      </a>
 
       <div className="event-body">
         <h3 className="event-title">{event.title}</h3>

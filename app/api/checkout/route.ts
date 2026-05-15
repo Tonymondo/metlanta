@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { getStripe } from '@/lib/stripe'
 import { getServiceClient, getEventById } from '@/lib/supabase'
-
-const PLATFORM_FEE_RATE = 0.15  // 15%
+import { calculateFee } from '@/lib/fees'
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,11 +29,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'This tier is sold out' }, { status: 409 })
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    const unitAmount = Math.round(price * 100)   // cents
-    const platformFee = Math.round(unitAmount * PLATFORM_FEE_RATE)
+    // Get session for user_id if logged in
+    const session = await getServerSession(authOptions)
+    const userId = session?.user?.id ?? null
 
-    const session = await getStripe().checkout.sessions.create({
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const unitAmount = Math.round(price * 100) // cents
+
+    // Use tiered fee engine
+    const { fee, payout } = calculateFee(price)
+    const platformFeeCents = Math.round(fee * 100)
+
+    const stripeSession = await getStripe().checkout.sessions.create({
       payment_method_types: ['card'],
       phone_number_collection: { enabled: true },
       line_items: [
@@ -58,8 +66,9 @@ export async function POST(req: NextRequest) {
         eventDate: event.date,
         eventLocation: event.location,
         tierName: tier.name,
-        platformFee: platformFee.toString(),
-        hostPayout: (unitAmount - platformFee).toString(),
+        platformFee: platformFeeCents.toString(),
+        hostPayout: (unitAmount - platformFeeCents).toString(),
+        ...(userId ? { userId } : {}),
       },
       payment_intent_data: {
         description: `Metlanta — ${event.title} (${tier.name})`,
@@ -72,14 +81,15 @@ export async function POST(req: NextRequest) {
       event_id: eventId,
       tier_id: tierId,
       buyer_email: '',        // filled in by webhook once payment is confirmed
-      stripe_session_id: session.id,
+      stripe_session_id: stripeSession.id,
       amount_paid: price * quantity,
-      platform_fee: (platformFee / 100) * quantity,
-      host_payout: ((unitAmount - platformFee) / 100) * quantity,
+      platform_fee: fee * quantity,
+      host_payout: payout * quantity,
       status: 'pending',
+      ...(userId ? { user_id: userId } : {}),
     })
 
-    return NextResponse.json({ url: session.url })
+    return NextResponse.json({ url: stripeSession.url })
   } catch (err: unknown) {
     console.error('Stripe checkout error:', err)
     const message = err instanceof Error ? err.message : 'Internal server error'

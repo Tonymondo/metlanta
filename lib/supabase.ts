@@ -25,7 +25,7 @@ export function getSupabase(): SupabaseClient {
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export type UserRole = 'attendee' | 'host' | 'admin'
+export type UserRole = 'attendee' | 'host' | 'promoter' | 'admin'
 export type EventStatus = 'draft' | 'live' | 'ended' | 'cancelled'
 export type TicketStatus = 'pending' | 'confirmed' | 'refunded'
 
@@ -35,6 +35,8 @@ export interface DbUser {
   name: string | null
   image: string | null
   role: UserRole
+  onboarding_complete: boolean
+  username: string | null
   created_at: string
 }
 
@@ -46,6 +48,13 @@ export interface DbHostProfile {
   instagram: string | null
   verified: boolean
   stripe_account_id: string | null
+  username: string | null
+  avatar_url: string | null
+  banner_url: string | null
+  twitter: string | null
+  location: string | null
+  follower_count: number
+  updated_at: string | null
 }
 
 export interface DbEvent {
@@ -65,6 +74,13 @@ export interface DbEvent {
   event_type: string | null
   age_policy: string | null
   created_at: string
+  slug: string | null
+  flyer_url: string | null
+  like_count: number
+  save_count: number
+  comment_count: number
+  view_count: number
+  is_featured: boolean
   ticket_tiers?: DbTicketTier[]
   host?: DbUser
 }
@@ -90,6 +106,48 @@ export interface DbTicket {
   platform_fee: number
   host_payout: number
   status: TicketStatus
+  checked_in: boolean
+  checked_in_at: string | null
+  user_id: string | null
+  created_at: string
+}
+
+export interface DbEventLike {
+  id: string
+  event_id: string
+  user_id: string
+  created_at: string
+}
+
+export interface DbEventSave {
+  id: string
+  event_id: string
+  user_id: string
+  created_at: string
+}
+
+export interface DbComment {
+  id: string
+  event_id: string
+  user_id: string
+  text: string
+  created_at: string
+  user?: Pick<DbUser, 'id' | 'name' | 'image'>
+}
+
+export interface DbFollow {
+  id: string
+  follower_id: string
+  following_id: string
+  created_at: string
+}
+
+export interface DbSmsBlast {
+  id: string
+  event_id: string
+  host_id: string
+  message: string
+  sent_count: number
   created_at: string
 }
 
@@ -167,4 +225,113 @@ export async function getHostStats(hostId: string) {
   const liveEvents = (events ?? []).filter((e: { status: string }) => e.status === 'live').length
 
   return { totalRevenue, totalTickets, liveEvents }
+}
+
+// ── Extended query helpers ────────────────────────────────────────────────────
+
+export async function getEventWithSocial(id: string, userId?: string) {
+  const db = getServiceClient()
+  const { data: event, error } = await db
+    .from('events')
+    .select(`
+      *,
+      ticket_tiers(*),
+      host_profiles(
+        id, user_id, display_name, bio, instagram, verified,
+        username, avatar_url, banner_url, twitter, location, follower_count
+      ),
+      host:users!events_host_id_fkey(id, name, image, username)
+    `)
+    .eq('id', id)
+    .single()
+
+  if (error || !event) return null
+
+  let has_liked = false
+  let has_saved = false
+
+  if (userId) {
+    const [{ data: like }, { data: save }] = await Promise.all([
+      db.from('event_likes').select('id').eq('event_id', id).eq('user_id', userId).maybeSingle(),
+      db.from('event_saves').select('id').eq('event_id', id).eq('user_id', userId).maybeSingle(),
+    ])
+    has_liked = !!like
+    has_saved = !!save
+  }
+
+  return { ...event, has_liked, has_saved }
+}
+
+export async function getLiveEventsPaginated(
+  cursor?: { created_at: string; id: string },
+  limit = 12,
+  filters?: { type?: string; city?: string }
+) {
+  const db = getServiceClient()
+  let query = db
+    .from('events')
+    .select('*, ticket_tiers(*)')
+    .eq('status', 'live')
+    .gte('date', new Date().toISOString().split('T')[0])
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(limit)
+
+  if (filters?.type) query = query.eq('event_type', filters.type)
+  if (filters?.city) query = query.ilike('city', `%${filters.city}%`)
+
+  if (cursor) {
+    query = query.or(
+      `created_at.lt.${cursor.created_at},and(created_at.eq.${cursor.created_at},id.lt.${cursor.id})`
+    )
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+  return (data ?? []) as DbEvent[]
+}
+
+export async function getHostProfile(username: string) {
+  const db = getServiceClient()
+  const { data, error } = await db
+    .from('host_profiles')
+    .select('*, user:users(id, name, image, email, username, role)')
+    .eq('username', username)
+    .single()
+  if (error) return null
+  return data
+}
+
+export async function getEventComments(eventId: string) {
+  const db = getServiceClient()
+  const { data, error } = await db
+    .from('event_comments')
+    .select('*, user:users(id, name, image)')
+    .eq('event_id', eventId)
+    .order('created_at', { ascending: true })
+    .limit(50)
+  if (error) throw error
+  return (data ?? []) as DbComment[]
+}
+
+export async function getEventAttendees(eventId: string) {
+  const db = getServiceClient()
+  const { data, error } = await db
+    .from('tickets')
+    .select(`
+      id, buyer_name, buyer_email, amount_paid, checked_in, phone_number,
+      tier:ticket_tiers(name)
+    `)
+    .eq('event_id', eventId)
+    .eq('status', 'confirmed')
+  if (error) throw error
+  return (data ?? []).map((t: Record<string, unknown>) => ({
+    id: t.id,
+    buyer_name: t.buyer_name,
+    buyer_email: t.buyer_email,
+    tier_name: (t.tier as { name: string } | null)?.name ?? null,
+    amount_paid: t.amount_paid,
+    checked_in: t.checked_in,
+    phone_number: t.phone_number,
+  }))
 }

@@ -11,7 +11,13 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      router.push(session?.user?.role === 'host' ? '/dashboard' : '/')
+      if (!session?.user?.onboarding_complete) {
+        router.push('/onboarding')
+      } else if (session?.user?.role === 'host' || session?.user?.role === 'promoter') {
+        router.push('/dashboard')
+      } else {
+        router.push('/')
+      }
     }
   }, [status, session, router])
 

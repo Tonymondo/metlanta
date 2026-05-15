@@ -9,7 +9,8 @@ declare module 'next-auth' {
       name?: string | null
       email?: string | null
       image?: string | null
-      role?: 'attendee' | 'host' | 'admin'
+      role?: 'attendee' | 'host' | 'promoter' | 'admin'
+      onboarding_complete?: boolean
     }
   }
 }
@@ -17,7 +18,8 @@ declare module 'next-auth' {
 declare module 'next-auth/jwt' {
   interface JWT {
     id?: string
-    role?: 'attendee' | 'host' | 'admin'
+    role?: 'attendee' | 'host' | 'promoter' | 'admin'
+    onboarding_complete?: boolean
   }
 }
 
@@ -40,11 +42,16 @@ export const authOptions: NextAuthOptions = {
       return true
     },
     async jwt({ token, user }) {
-      if (user?.email) {
-        const dbUser = await getUserByEmail(user.email)
-        if (dbUser) {
-          token.id = dbUser.id
-          token.role = dbUser.role as 'attendee' | 'host' | 'admin'
+      // On initial sign-in, user is populated; always refresh from DB on first load
+      if (user?.email || token.id) {
+        const email = user?.email ?? token.email
+        if (email) {
+          const dbUser = await getUserByEmail(email as string)
+          if (dbUser) {
+            token.id = dbUser.id
+            token.role = dbUser.role as 'attendee' | 'host' | 'promoter' | 'admin'
+            token.onboarding_complete = dbUser.onboarding_complete ?? false
+          }
         }
       }
       return token
@@ -53,6 +60,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.id
         session.user.role = token.role ?? 'attendee'
+        session.user.onboarding_complete = token.onboarding_complete ?? false
       }
       return session
     },

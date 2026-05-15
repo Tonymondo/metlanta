@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { getServiceClient } from '@/lib/supabase'
 import { sendTicketConfirmationSMS } from '@/lib/sms'
+import { calculateFee } from '@/lib/fees'
 import Stripe from 'stripe'
 
 export async function POST(req: NextRequest) {
@@ -28,6 +29,10 @@ export async function POST(req: NextRequest) {
     const meta = session.metadata ?? {}
 
     const phone = session.customer_details?.phone ?? null
+    const amountTotal = session.amount_total ? session.amount_total / 100 : 0
+
+    // Recalculate fee using tiered engine for accuracy
+    const { fee, payout } = calculateFee(amountTotal)
 
     // Confirm ticket + update sold_count
     const { data: ticket } = await db
@@ -38,6 +43,8 @@ export async function POST(req: NextRequest) {
         buyer_name: session.customer_details?.name ?? '',
         stripe_payment_intent: session.payment_intent as string,
         phone_number: phone,
+        platform_fee: fee,
+        host_payout: payout,
       })
       .eq('stripe_session_id', session.id)
       .select()
@@ -59,20 +66,11 @@ export async function POST(req: NextRequest) {
         ticketId: ticket?.id ?? '',
       })
     }
-
-    console.log('✅ Ticket confirmed:', {
-      session: session.id,
-      event: meta.eventTitle,
-      tier: meta.tierName,
-      amount: session.amount_total,
-      buyer: session.customer_details?.email,
-      sms: phone ? 'sent' : 'no phone',
-    })
   }
 
   if (event.type === 'payment_intent.payment_failed') {
     const intent = event.data.object as Stripe.PaymentIntent
-    console.error('❌ Payment failed:', intent.id)
+    console.error('Payment failed:', intent.id)
   }
 
   return NextResponse.json({ received: true })
