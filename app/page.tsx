@@ -1,11 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback, lazy, Suspense } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import Image from 'next/image'
 import { useSession, signOut } from 'next-auth/react'
 import type { DbEvent, DbTicketTier } from '@/lib/supabase'
 
-const Spline = lazy(() => import('@splinetool/react-spline'))
 
 /* ── Checkout ──────────────────────────────────────────────────────────────── */
 
@@ -238,26 +237,26 @@ function Navbar() {
 /* ── Hero ──────────────────────────────────────────────────────────────────── */
 
 function Hero() {
-  const [splineReady, setSplineReady] = useState(false)
+  const [loaded, setLoaded] = useState(false)
 
   return (
     <section className="hero">
-      {/* Spline 3D scene — full background */}
-      <div className={`hero-spline${splineReady ? ' ready' : ''}`} aria-hidden>
-        <Suspense fallback={null}>
-          <Spline
-            scene="https://prod.spline.design/0dd52ca5-9e44-4257-92f9-e371770cac66/scene.splinecode"
-            onLoad={() => setSplineReady(true)}
-            style={{ width: '100%', height: '100%' }}
-          />
-        </Suspense>
+      {/* Spline 3D scene via iframe */}
+      <div className={`hero-spline${loaded ? ' ready' : ''}`} aria-hidden>
+        <iframe
+          src="https://my.spline.design/windherocopycopy-c5x0ja0qNocO0lWsZ0Rva0jA-Kr6/"
+          frameBorder="0"
+          onLoad={() => setLoaded(true)}
+          style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+          title="Metlanta 3D hero"
+        />
       </div>
 
-      {/* Fallback gradient shown while Spline loads */}
+      {/* Fallback orbs visible while iframe loads */}
       <div className="hero-orb hero-orb-1" aria-hidden />
       <div className="hero-orb hero-orb-2" aria-hidden />
 
-      {/* Dark gradient overlay so text stays readable over 3D scene */}
+      {/* Gradient so text stays readable */}
       <div className="hero-overlay" aria-hidden />
 
       <div className="hero-content">
