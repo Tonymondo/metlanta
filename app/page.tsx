@@ -237,51 +237,22 @@ function Navbar() {
 /* ── Hero ──────────────────────────────────────────────────────────────────── */
 
 function Hero() {
-  const [loaded, setLoaded] = useState(false)
-
   return (
-    <section className="hero">
-      {/* Spline 3D scene via iframe */}
-      <div className={`hero-spline${loaded ? ' ready' : ''}`} aria-hidden>
-        <iframe
-          src="https://my.spline.design/windherocopycopy-c5x0ja0qNocO0lWsZ0Rva0jA-Kr6/"
-          frameBorder="0"
-          onLoad={() => setLoaded(true)}
-          style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
-          title="Metlanta 3D hero"
-        />
-      </div>
-
-      {/* Fallback orbs visible while iframe loads */}
-      <div className="hero-orb hero-orb-1" aria-hidden />
-      <div className="hero-orb hero-orb-2" aria-hidden />
-
-      {/* Gradient so text stays readable */}
-      <div className="hero-overlay" aria-hidden />
-
-      <div className="hero-content">
-        <div className="hero-eyebrow">
-          <span className="eyebrow-dot" />
-          Atlanta&apos;s Social Event Marketplace
-        </div>
-
-        <h1 className="hero-title">METLANTA</h1>
-        <p className="hero-subtitle">
-          After proms. Day parties. Kickbacks. Nightlife.<br />
-          Discover, buy tickets, or host your own event.
-        </p>
-
-        <div className="hero-actions">
-          <a href="#events" className="btn-primary">
-            Explore Events
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-          </a>
-          <a href="/login" className="btn-ghost">Start Hosting</a>
-        </div>
-
-        <div className="hero-scroll-hint">
-          <div className="hero-scroll-line" />
-        </div>
+    <section className="hero-spline-full">
+      <iframe
+        src="https://my.spline.design/windherocopycopy-c5x0ja0qNocO0lWsZ0Rva0jA-Kr6/"
+        frameBorder="0"
+        allowFullScreen
+        title="Metlanta 3D"
+        className="spline-iframe"
+      />
+      {/* Cover Spline's built-in watermark bottom-right */}
+      <div className="spline-wm-cover" aria-hidden />
+      {/* Fade bottom into page */}
+      <div className="spline-bottom-fade" aria-hidden />
+      {/* Scroll cue */}
+      <div className="spline-scroll-hint" aria-hidden>
+        <div className="hero-scroll-line" />
       </div>
     </section>
   )
