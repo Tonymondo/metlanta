@@ -107,8 +107,7 @@ function AnimCounter({ target, prefix = '', suffix = '' }: { target: number; pre
 function Navbar() {
   const { data: session } = useSession()
   const [scrolled, setScrolled] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [dropOpen, setDropOpen] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 48)
@@ -117,59 +116,117 @@ function Navbar() {
   }, [])
 
   useEffect(() => {
-    document.body.style.overflow = menuOpen ? 'hidden' : ''
+    document.body.style.overflow = drawerOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
-  }, [menuOpen])
+  }, [drawerOpen])
+
+  const close = () => setDrawerOpen(false)
 
   return (
     <>
       <header className={`nav${scrolled ? ' scrolled' : ''}`}>
         <div className="nav-inner">
-          {/* Wordmark only */}
           <a href="/" className="nav-brand">METLANTA</a>
-
           <div className="nav-right">
-            {session ? (
-              <div style={{ position: 'relative' }}>
-                <button className="nav-avatar-btn" onClick={() => setDropOpen((v) => !v)}>
-                  {session.user?.image
-                    ? <Image src={session.user.image} alt="" width={30} height={30} className="nav-avatar" />
-                    : <div className="nav-avatar-fallback">{session.user?.name?.[0] ?? '?'}</div>
-                  }
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
-                </button>
-                {dropOpen && (
-                  <div className="nav-dropdown" onClick={() => setDropOpen(false)}>
-                    <p className="nav-drop-label">{session.user?.name}</p>
-                    <a href="/dashboard" className="nav-drop-item">Dashboard</a>
-                    <a href="/dashboard?tab=create" className="nav-drop-item">Create Event</a>
-                    <button className="nav-drop-item" onClick={() => signOut({ callbackUrl: '/' })}>Sign Out</button>
-                  </div>
-                )}
-              </div>
-            ) : (
+            {!session && (
               <>
                 <a href="/login" className="nav-login-link">Log in</a>
                 <a href="/login" className="nav-cta">Get Started</a>
               </>
             )}
-            <button className={`nav-burger${menuOpen ? ' open' : ''}`} onClick={() => setMenuOpen((v) => !v)} aria-label="Menu">
-              <span /><span /><span />
+            <button className="nav-avatar-btn" onClick={() => setDrawerOpen((v) => !v)} aria-label="Menu">
+              {session?.user?.image
+                ? <Image src={session.user.image} alt="" width={30} height={30} className="nav-avatar" />
+                : session
+                  ? <div className="nav-avatar-fallback">{session.user?.name?.[0] ?? '?'}</div>
+                  : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+                    </svg>
+                  )
+              }
             </button>
           </div>
         </div>
       </header>
 
-      {/* Mobile menu */}
-      <div className={`mobile-menu${menuOpen ? ' open' : ''}`} onClick={() => setMenuOpen(false)}>
-        <div className="mobile-menu-inner" onClick={(e) => e.stopPropagation()}>
-          <a href="#events" className="mm-link" onClick={() => setMenuOpen(false)}>Events</a>
-          <a href="#host" className="mm-link" onClick={() => setMenuOpen(false)}>Host</a>
-          {session
-            ? <a href="/dashboard" className="mm-link" onClick={() => setMenuOpen(false)}>Dashboard</a>
-            : <a href="/login" className="mm-link" onClick={() => setMenuOpen(false)}>Log In</a>
-          }
-          {!session && <a href="/login" className="btn-primary" style={{ textAlign: 'center' }} onClick={() => setMenuOpen(false)}>Get Started</a>}
+      {/* Side drawer overlay */}
+      <div className={`drawer-overlay${drawerOpen ? ' open' : ''}`} onClick={close} />
+
+      {/* Side drawer */}
+      <div className={`drawer${drawerOpen ? ' open' : ''}`}>
+        <div className="drawer-top">
+          {session ? (
+            <div className="drawer-user">
+              {session.user?.image
+                ? <Image src={session.user.image} alt="" width={40} height={40} className="drawer-avatar" />
+                : <div className="drawer-avatar-fallback">{session.user?.name?.[0] ?? '?'}</div>
+              }
+              <div style={{ minWidth: 0 }}>
+                <p className="drawer-user-name">{session.user?.name ?? 'User'}</p>
+                <p className="drawer-user-email">{session.user?.email}</p>
+              </div>
+            </div>
+          ) : (
+            <p style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>Menu</p>
+          )}
+          <button className="drawer-close" onClick={close} aria-label="Close">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+          </button>
+        </div>
+
+        <nav className="drawer-nav">
+          <a href="/#events" className="drawer-link" onClick={close}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+            Find Events
+          </a>
+          {session && (
+            <>
+              <a href="/tickets" className="drawer-link" onClick={close}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2z" /></svg>
+                My Tickets
+              </a>
+              <a href="/account" className="drawer-link" onClick={close}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                Account
+              </a>
+              <a href="/dashboard" className="drawer-link" onClick={close}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></svg>
+                Host Dashboard
+              </a>
+            </>
+          )}
+          <div className="drawer-divider" />
+          <a href="/help" className="drawer-link" onClick={close}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+            Help Center
+          </a>
+          <a href="mailto:support@metlanta.com" className="drawer-link" onClick={close}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+            Support
+          </a>
+          {!session && (
+            <>
+              <div className="drawer-divider" />
+              <a href="/login" className="drawer-link" onClick={close}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /><polyline points="10 17 15 12 10 7" /><line x1="15" y1="12" x2="3" y2="12" /></svg>
+                Log In
+              </a>
+            </>
+          )}
+          {session && (
+            <>
+              <div className="drawer-divider" />
+              <button className="drawer-link danger" onClick={() => { close(); signOut({ callbackUrl: '/' }) }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
+                Sign Out
+              </button>
+            </>
+          )}
+        </nav>
+
+        <div className="drawer-bottom">
+          <p className="drawer-version">Metlanta © 2025</p>
         </div>
       </div>
     </>
