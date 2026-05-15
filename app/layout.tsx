@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Outfit, Bebas_Neue } from 'next/font/google'
+import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import './landing.css'
 import { Providers } from './providers'
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${outfit.variable} ${bebas.variable}`}>
       <body style={{ margin: 0, background: '#0A0A0A', color: '#fff' }}>
         <Providers>{children}</Providers>
+        <Analytics />
       </body>
     </html>
   )
