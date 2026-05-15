@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
 
     const session = await getStripe().checkout.sessions.create({
       payment_method_types: ['card'],
+      phone_number_collection: { enabled: true },
       line_items: [
         {
           price_data: {
@@ -54,6 +55,8 @@ export async function POST(req: NextRequest) {
         eventId,
         tierId,
         eventTitle: event.title,
+        eventDate: event.date,
+        eventLocation: event.location,
         tierName: tier.name,
         platformFee: platformFee.toString(),
         hostPayout: (unitAmount - platformFee).toString(),

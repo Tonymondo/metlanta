@@ -65,6 +65,7 @@ create table if not exists tickets (
   tier_id                 uuid references ticket_tiers(id),
   buyer_email             text not null,
   buyer_name              text,
+  phone_number            text,
   stripe_session_id       text unique,
   stripe_payment_intent   text,
   amount_paid             numeric(10,2) not null,
@@ -73,6 +74,9 @@ create table if not exists tickets (
   status                  text not null default 'pending',  -- pending | confirmed | refunded
   created_at              timestamptz default now()
 );
+
+-- If tickets table already exists, add phone_number column:
+-- alter table tickets add column if not exists phone_number text;
 
 -- Indexes for performance
 create index if not exists events_status_idx       on events(status);

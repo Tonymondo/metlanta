@@ -233,6 +233,7 @@ img { display: block; max-width: 100%; }
 .login-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 .login-switch { margin-top: 18px; text-align: center; font-size: 13px; color: var(--gray); }
 .login-switch button { color: var(--red); font-weight: 600; font-size: 13px; background: none; border: none; cursor: pointer; font-family: var(--font); }
+.login-terms { margin-top: 20px; text-align: center; font-size: 11px; color: var(--gray3); line-height: 1.5; }
 
 /* ── DASHBOARD ───────────────────────────────────────────────────────────── */
 .dash-page { display: flex; min-height: 100svh; background: var(--black); padding-top: 58px; }
@@ -372,8 +373,8 @@ img { display: block; max-width: 100%; }
 .ticket-footer { display: flex; align-items: center; justify-content: space-between; }
 .ticket-status { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--green); }
 .ticket-status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px rgba(34,197,94,0.6); flex-shrink: 0; }
-.ticket-qr-placeholder { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.ticket-qr-placeholder span { font-size: 9px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: rgba(255,255,255,0.18); }
+.ticket-qr { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.ticket-qr span { font-size: 9px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: rgba(255,255,255,0.35); }
 
 /* ── Help page ────────────────────────────────────────────────────────────── */
 .help-content { padding: 0 20px 48px; max-width: 500px; width: 100%; margin: 0 auto; }

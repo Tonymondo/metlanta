@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { QRCodeSVG } from 'qrcode.react'
 
 interface Ticket {
   id: string
@@ -135,11 +136,14 @@ export default function TicketsPage() {
                         <span className="ticket-status-dot" />
                         Confirmed
                       </div>
-                      <div className="ticket-qr-placeholder">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
-                          <rect x="14" y="14" width="3" height="3" /><rect x="18" y="18" width="3" height="3" />
-                        </svg>
+                      <div className="ticket-qr">
+                        <QRCodeSVG
+                          value={`https://metlanta.app/tickets/${ticket.id}`}
+                          size={72}
+                          bgColor="transparent"
+                          fgColor="#ffffff"
+                          level="M"
+                        />
                         <span>Show at door</span>
                       </div>
                     </div>

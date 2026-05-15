@@ -1,6 +1,5 @@
 import { NextAuthOptions } from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
-import CredentialsProvider from 'next-auth/providers/credentials'
 import { upsertUser, getUserByEmail } from './supabase'
 
 declare module 'next-auth' {
@@ -28,21 +27,6 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-    CredentialsProvider({
-      name: 'Email',
-      credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' },
-      },
-      async authorize(credentials) {
-        // TODO: add password hashing + DB lookup when email auth is ready
-        if (!credentials?.email || !credentials?.password) return null
-        const user = await getUserByEmail(credentials.email)
-        if (!user) return null
-        // Placeholder: real implementation needs bcrypt password comparison
-        return null
-      },
     }),
   ],
   callbacks: {

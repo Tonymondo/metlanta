@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { getServiceClient } from '@/lib/supabase'
+import { sendTicketConfirmationSMS } from '@/lib/sms'
 import Stripe from 'stripe'
 
 export async function POST(req: NextRequest) {
@@ -26,6 +27,8 @@ export async function POST(req: NextRequest) {
     const session = event.data.object as Stripe.Checkout.Session
     const meta = session.metadata ?? {}
 
+    const phone = session.customer_details?.phone ?? null
+
     // Confirm ticket + update sold_count
     const { data: ticket } = await db
       .from('tickets')
@@ -34,6 +37,7 @@ export async function POST(req: NextRequest) {
         buyer_email: session.customer_details?.email ?? '',
         buyer_name: session.customer_details?.name ?? '',
         stripe_payment_intent: session.payment_intent as string,
+        phone_number: phone,
       })
       .eq('stripe_session_id', session.id)
       .select()
@@ -44,14 +48,25 @@ export async function POST(req: NextRequest) {
       await db.rpc('increment_sold_count', { tier_id: ticket.tier_id, qty: 1 })
     }
 
+    // Send SMS confirmation
+    if (phone) {
+      await sendTicketConfirmationSMS({
+        to: phone,
+        eventTitle: meta.eventTitle ?? 'your event',
+        eventDate: meta.eventDate ?? '',
+        eventLocation: meta.eventLocation ?? '',
+        tierName: meta.tierName ?? 'General',
+        ticketId: ticket?.id ?? '',
+      })
+    }
+
     console.log('✅ Ticket confirmed:', {
       session: session.id,
       event: meta.eventTitle,
       tier: meta.tierName,
       amount: session.amount_total,
-      fee: meta.platformFee,
-      payout: meta.hostPayout,
       buyer: session.customer_details?.email,
+      sms: phone ? 'sent' : 'no phone',
     })
   }
 
