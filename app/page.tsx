@@ -1,182 +1,48 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import Image from 'next/image'
 import { useSession, signOut } from 'next-auth/react'
+import type { DbEvent, DbTicketTier } from '@/lib/supabase'
 
-async function buyTicket(eventName: string, tierName: string, price: number) {
+/* ── Checkout ──────────────────────────────────────────────────────────────── */
+
+async function buyTicket(eventId: string, tierId: string, tierName: string, price: number) {
   const res = await fetch('/api/checkout', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ eventName, tierName, price }),
+    body: JSON.stringify({ eventId, tierId, tierName, price }),
   })
   const data = await res.json()
   if (data.url) window.location.href = data.url
-  else alert('Something went wrong. Please try again.')
+  else alert(data.error ?? 'Something went wrong.')
 }
 
-/* ── Data ──────────────────────────────────────────────────────────────────── */
-
-const EVENTS = [
-  {
-    name: 'Senior After Prom 2026',
-    host: '@cre8tive.events',
-    date: 'MAY 22',
-    time: '10PM – 4AM',
-    location: 'Atlanta, GA',
-    price: 'From $25',
-    ticketPrice: 25,
-    tierName: 'General',
-    going: '1.2k going',
-    hot: true,
-    bg: 'linear-gradient(160deg, #2d0808 0%, #0d0000 100%)',
-  },
-  {
-    name: 'Sunday Kickback',
-    host: '@jaxon.host',
-    date: 'MAY 25',
-    time: '4PM – 10PM',
-    location: 'Decatur, GA',
-    price: 'Free',
-    ticketPrice: 0,
-    tierName: 'RSVP',
-    going: '340 going',
-    hot: false,
-    bg: 'linear-gradient(160deg, #050d05 0%, #030808 100%)',
-  },
-  {
-    name: 'Buckhead Saturday',
-    host: '@nightout_atl',
-    date: 'MAY 24',
-    time: '9PM – 3AM',
-    location: 'Buckhead, GA',
-    price: 'From $20',
-    ticketPrice: 20,
-    tierName: 'General',
-    going: '870 going',
-    hot: true,
-    bg: 'linear-gradient(160deg, #1a0a1e 0%, #050008 100%)',
-  },
-  {
-    name: 'Junior Day Function',
-    host: '@stonewall.juniors',
-    date: 'MAY 17',
-    time: '2PM – 8PM',
-    location: 'Stone Mountain, GA',
-    price: 'From $20',
-    ticketPrice: 20,
-    tierName: 'General',
-    going: '580 going',
-    hot: false,
-    bg: 'linear-gradient(160deg, #070010 0%, #10001a 100%)',
-  },
-  {
-    name: 'Summer Cookout Pop-Up',
-    host: '@atl.good.times',
-    date: 'JUN 7',
-    time: '3PM – 9PM',
-    location: 'East Atlanta, GA',
-    price: 'From $15',
-    ticketPrice: 15,
-    tierName: 'General',
-    going: '720 going',
-    hot: false,
-    bg: 'linear-gradient(160deg, #1e1000 0%, #070400 100%)',
-  },
-  {
-    name: 'The Golden Standard Func',
-    host: '@az.events',
-    date: 'JUN 14',
-    time: '8PM – 2AM',
-    location: 'Midtown, GA',
-    price: 'From $35',
-    ticketPrice: 35,
-    tierName: 'General',
-    going: '990 going',
-    hot: true,
-    bg: 'linear-gradient(160deg, #1a1400 0%, #060500 100%)',
-  },
-]
-
-/* ── Hooks ─────────────────────────────────────────────────────────────────── */
-
-function useReveal() {
-  useEffect(() => {
-    const els = document.querySelectorAll('.reveal')
-    const io = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) {
-            e.target.classList.add('visible')
-            io.unobserve(e.target)
-          }
-        })
-      },
-      { threshold: 0.12 }
-    )
-    els.forEach((el) => io.observe(el))
-    return () => io.disconnect()
-  }, [])
-}
-
-function useCounter(target: number, duration = 1800) {
-  const [value, setValue] = useState(0)
-  const ref = useRef<HTMLSpanElement>(null)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting) return
-        io.disconnect()
-        const start = performance.now()
-        const tick = (now: number) => {
-          const t = Math.min((now - start) / duration, 1)
-          const ease = 1 - Math.pow(1 - t, 3)
-          setValue(Math.round(ease * target))
-          if (t < 1) requestAnimationFrame(tick)
-        }
-        requestAnimationFrame(tick)
-      },
-      { threshold: 0.5 }
-    )
-    io.observe(el)
-    return () => io.disconnect()
-  }, [target, duration])
-
-  return { value, ref }
-}
-
-/* ── Canvas particles ──────────────────────────────────────────────────────── */
+/* ── Canvas particle hero ──────────────────────────────────────────────────── */
 
 function useHeroCanvas() {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-
+  const ref = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
-    const canvas = canvasRef.current
+    const canvas = ref.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-
     let raf: number
-    const particles: { x: number; y: number; vx: number; vy: number; r: number; o: number }[] = []
+    type P = { x: number; y: number; vx: number; vy: number; r: number; o: number }
+    const particles: P[] = []
 
-    const resize = () => {
-      canvas.width = canvas.offsetWidth
-      canvas.height = canvas.offsetHeight
-    }
+    const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight }
     resize()
     window.addEventListener('resize', resize)
 
-    for (let i = 0; i < 80; i++) {
+    for (let i = 0; i < 100; i++) {
       particles.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 0.3,
-        vy: -Math.random() * 0.4 - 0.1,
-        r: Math.random() * 1.5 + 0.3,
-        o: Math.random() * 0.5 + 0.1,
+        vx: (Math.random() - 0.5) * 0.25,
+        vy: -(Math.random() * 0.35 + 0.05),
+        r: Math.random() * 1.2 + 0.2,
+        o: Math.random() * 0.4 + 0.05,
       })
     }
 
@@ -187,8 +53,7 @@ function useHeroCanvas() {
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
         ctx.fillStyle = `rgba(255,255,255,${p.o})`
         ctx.fill()
-        p.x += p.vx
-        p.y += p.vy
+        p.x += p.vx; p.y += p.vy
         if (p.y < -10) { p.y = canvas.height + 10; p.x = Math.random() * canvas.width }
         if (p.x < 0) p.x = canvas.width
         if (p.x > canvas.width) p.x = 0
@@ -196,112 +61,115 @@ function useHeroCanvas() {
       raf = requestAnimationFrame(draw)
     }
     draw()
-
-    return () => {
-      cancelAnimationFrame(raf)
-      window.removeEventListener('resize', resize)
-    }
+    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', resize) }
   }, [])
+  return ref
+}
 
-  return canvasRef
+/* ── Scroll reveal ─────────────────────────────────────────────────────────── */
+
+function useReveal() {
+  useEffect(() => {
+    const els = document.querySelectorAll('.reveal')
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target) } })
+    }, { threshold: 0.1 })
+    els.forEach((el) => io.observe(el))
+    return () => io.disconnect()
+  }, [])
+}
+
+/* ── Animated counter ──────────────────────────────────────────────────────── */
+
+function AnimCounter({ target, prefix = '', suffix = '' }: { target: number; prefix?: string; suffix?: string }) {
+  const [val, setVal] = useState(0)
+  const ref = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    const el = ref.current; if (!el) return
+    const io = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return; io.disconnect()
+      const dur = 1600; const start = performance.now()
+      const tick = (now: number) => {
+        const t = Math.min((now - start) / dur, 1)
+        setVal(Math.round((1 - Math.pow(1 - t, 3)) * target))
+        if (t < 1) requestAnimationFrame(tick)
+      }
+      requestAnimationFrame(tick)
+    }, { threshold: 0.5 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [target])
+  return <span ref={ref}>{prefix}{val.toLocaleString()}{suffix}</span>
 }
 
 /* ── Navbar ────────────────────────────────────────────────────────────────── */
 
 function Navbar() {
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
   const [scrolled, setScrolled] = useState(false)
-  const [open, setOpen] = useState(false)
-  const [userMenu, setUserMenu] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [dropOpen, setDropOpen] = useState(false)
 
   useEffect(() => {
-    const h = () => setScrolled(window.scrollY > 40)
+    const h = () => setScrolled(window.scrollY > 48)
     window.addEventListener('scroll', h, { passive: true })
     return () => window.removeEventListener('scroll', h)
   }, [])
 
   useEffect(() => {
-    document.body.style.overflow = open ? 'hidden' : ''
+    document.body.style.overflow = menuOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
-  }, [open])
-
-  const links = [
-    { label: 'Events', href: '#events' },
-    { label: 'Host', href: '#host' },
-  ]
+  }, [menuOpen])
 
   return (
     <>
       <header className={`nav${scrolled ? ' scrolled' : ''}`}>
         <div className="nav-inner">
-          <a href="/" className="nav-logo" aria-label="Metlanta">
-            <div className="nav-logo-wrap">
-              <Image src="/logo.png" alt="Metlanta logo" height={28} width={62} className="nav-logo-img" priority />
-            </div>
-            <span className="nav-wordmark">Metlanta</span>
-          </a>
+          {/* Wordmark only */}
+          <a href="/" className="nav-brand">METLANTA</a>
 
-          <ul className="nav-links">
-            {links.map((l) => (
-              <li key={l.label}><a href={l.href}>{l.label}</a></li>
-            ))}
-          </ul>
-
-          <div className="nav-actions">
-            {status === 'authenticated' && session?.user ? (
-              <div className="nav-user-menu" style={{ position: 'relative' }}>
-                <button className="nav-avatar-btn" onClick={() => setUserMenu((v) => !v)}>
-                  {session.user.image
-                    ? <Image src={session.user.image} alt="avatar" width={32} height={32} className="nav-avatar" />
-                    : <div className="nav-avatar-fallback">{session.user.name?.[0] ?? '?'}</div>
+          <div className="nav-right">
+            {session ? (
+              <div style={{ position: 'relative' }}>
+                <button className="nav-avatar-btn" onClick={() => setDropOpen((v) => !v)}>
+                  {session.user?.image
+                    ? <Image src={session.user.image} alt="" width={30} height={30} className="nav-avatar" />
+                    : <div className="nav-avatar-fallback">{session.user?.name?.[0] ?? '?'}</div>
                   }
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
                 </button>
-                {userMenu && (
-                  <div className="nav-dropdown">
-                    <p className="nav-dropdown-name">{session.user.name}</p>
-                    <a href="/dashboard" className="nav-dropdown-item" onClick={() => setUserMenu(false)}>Dashboard</a>
-                    <button className="nav-dropdown-item" onClick={() => signOut({ callbackUrl: '/' })}>Sign Out</button>
+                {dropOpen && (
+                  <div className="nav-dropdown" onClick={() => setDropOpen(false)}>
+                    <p className="nav-drop-label">{session.user?.name}</p>
+                    <a href="/dashboard" className="nav-drop-item">Dashboard</a>
+                    <a href="/dashboard?tab=create" className="nav-drop-item">Create Event</a>
+                    <button className="nav-drop-item" onClick={() => signOut({ callbackUrl: '/' })}>Sign Out</button>
                   </div>
                 )}
               </div>
             ) : (
               <>
-                <a href="/login" className="nav-login">Log In</a>
-                <a href="/login" className="btn-nav">
-                  Get Started
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <path d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
-                </a>
+                <a href="/login" className="nav-login-link">Log in</a>
+                <a href="/login" className="nav-cta">Get Started</a>
               </>
             )}
+            <button className={`nav-burger${menuOpen ? ' open' : ''}`} onClick={() => setMenuOpen((v) => !v)} aria-label="Menu">
+              <span /><span /><span />
+            </button>
           </div>
-
-          <button className={`nav-burger${open ? ' open' : ''}`} onClick={() => setOpen((v) => !v)} aria-label="Menu">
-            <span /><span /><span />
-          </button>
         </div>
       </header>
 
-      <div className={`mobile-menu${open ? ' open' : ''}`}>
-        {links.map((l) => (
-          <a key={l.label} href={l.href} onClick={() => setOpen(false)}>{l.label}</a>
-        ))}
-        {session ? (
-          <a href="/dashboard" onClick={() => setOpen(false)}>Dashboard</a>
-        ) : null}
-        <div className="mobile-ctas">
-          {session ? (
-            <button className="btn-primary" style={{ justifyContent: 'center' }} onClick={() => { signOut({ callbackUrl: '/' }); setOpen(false) }}>
-              Sign Out
-            </button>
-          ) : (
-            <>
-              <a href="/login" className="btn-primary" style={{ justifyContent: 'center' }} onClick={() => setOpen(false)}>Get Started</a>
-              <a href="/login" className="btn-ghost" style={{ justifyContent: 'center' }} onClick={() => setOpen(false)}>Log In</a>
-            </>
-          )}
+      {/* Mobile menu */}
+      <div className={`mobile-menu${menuOpen ? ' open' : ''}`} onClick={() => setMenuOpen(false)}>
+        <div className="mobile-menu-inner" onClick={(e) => e.stopPropagation()}>
+          <a href="#events" className="mm-link" onClick={() => setMenuOpen(false)}>Events</a>
+          <a href="#host" className="mm-link" onClick={() => setMenuOpen(false)}>Host</a>
+          {session
+            ? <a href="/dashboard" className="mm-link" onClick={() => setMenuOpen(false)}>Dashboard</a>
+            : <a href="/login" className="mm-link" onClick={() => setMenuOpen(false)}>Log In</a>
+          }
+          {!session && <a href="/login" className="btn-primary" style={{ textAlign: 'center' }} onClick={() => setMenuOpen(false)}>Get Started</a>}
         </div>
       </div>
     </>
@@ -312,24 +180,14 @@ function Navbar() {
 
 function Hero() {
   const canvasRef = useHeroCanvas()
-
   return (
     <section className="hero">
-      {/* Ambient orbs */}
       <div className="hero-orb hero-orb-1" aria-hidden />
       <div className="hero-orb hero-orb-2" aria-hidden />
       <div className="hero-orb hero-orb-3" aria-hidden />
-
-      {/* Background image (renders if file exists) */}
-      <div className="hero-bg-img" aria-hidden />
-
-      {/* Gradient overlay */}
+      <canvas className="hero-canvas" ref={canvasRef} aria-hidden />
       <div className="hero-overlay" aria-hidden />
 
-      {/* Particle canvas */}
-      <canvas id="hero-canvas" ref={canvasRef} aria-hidden />
-
-      {/* Content */}
       <div className="hero-content">
         <div className="hero-eyebrow">
           <span className="eyebrow-dot" />
@@ -337,25 +195,20 @@ function Hero() {
         </div>
 
         <h1 className="hero-title">METLANTA</h1>
-        <p className="hero-title-sub">Discover · Host · Get Paid</p>
-
-        <p className="hero-tagline">
-          After proms, day parties, kickbacks, school events — find them all or
-          host your own and sell out in hours.
+        <p className="hero-subtitle">
+          After proms. Day parties. Kickbacks. Nightlife.<br />
+          Discover, buy tickets, or host your own event.
         </p>
 
-        <div className="hero-ctas">
-          <a href="#host" className="btn-primary">
-            Start Hosting Free
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
+        <div className="hero-actions">
+          <a href="#events" className="btn-primary">
+            Explore Events
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
           </a>
-          <a href="#events" className="btn-ghost">Explore Events</a>
+          <a href="/login" className="btn-ghost">Start Hosting</a>
         </div>
 
-        <div className="hero-scroll">
-          <span className="hero-scroll-text">Scroll</span>
+        <div className="hero-scroll-hint">
           <div className="hero-scroll-line" />
         </div>
       </div>
@@ -363,150 +216,292 @@ function Hero() {
   )
 }
 
-/* ── Events ────────────────────────────────────────────────────────────────── */
+/* ── Event card ────────────────────────────────────────────────────────────── */
 
-function EventCard({ e, i }: { e: typeof EVENTS[number]; i: number }) {
+function EventCard({ event }: { event: DbEvent }) {
   const [loading, setLoading] = useState(false)
-  const delay = ['', 'd1', 'd2', 'd3', 'd4'][Math.min(i, 4)]
+  const [selectedTier, setSelectedTier] = useState<DbTicketTier | null>(
+    event.ticket_tiers?.[0] ?? null
+  )
+
+  const minPrice = event.ticket_tiers?.length
+    ? Math.min(...event.ticket_tiers.map((t) => t.price))
+    : 0
+
+  const isFree = minPrice === 0
+  const available = selectedTier
+    ? selectedTier.capacity === null || selectedTier.sold_count < selectedTier.capacity
+    : false
+
+  const soldPct = selectedTier?.capacity
+    ? Math.round((selectedTier.sold_count / selectedTier.capacity) * 100)
+    : 0
 
   async function handleBuy() {
-    if (e.ticketPrice === 0) return
+    if (!selectedTier || !available) return
     setLoading(true)
-    await buyTicket(e.name, e.tierName, e.ticketPrice)
+    await buyTicket(event.id, selectedTier.id, selectedTier.name, selectedTier.price)
     setLoading(false)
   }
 
+  // Generate a gradient for events without images
+  const GRADIENTS: Record<string, string> = {
+    after_prom: 'linear-gradient(160deg, #2d0808 0%, #0d0000 100%)',
+    day_party: 'linear-gradient(160deg, #1a0a1e 0%, #050008 100%)',
+    nightlife: 'linear-gradient(160deg, #1a1400 0%, #060500 100%)',
+    kickback: 'linear-gradient(160deg, #050d05 0%, #030808 100%)',
+    pop_up: 'linear-gradient(160deg, #1e1000 0%, #070400 100%)',
+    school_event: 'linear-gradient(160deg, #070010 0%, #10001a 100%)',
+  }
+  const bg = GRADIENTS[event.event_type ?? ''] ?? 'linear-gradient(160deg, #141414 0%, #0a0a0a 100%)'
+
   return (
-    <div className={`event-card reveal${delay ? ` ${delay}` : ''}`}>
+    <div className="event-card">
+      {/* Image area */}
       <div className="event-img">
-        <div className="event-img-bg" style={{ background: e.bg }} />
+        {event.image_url
+          ? <Image src={event.image_url} alt={event.title} fill className="event-img-photo" />
+          : <div className="event-img-bg" style={{ background: bg }} />
+        }
         <div className="event-img-overlay" />
-        {e.hot && (
-          <div className="event-badge">
-            <span className="badge-dot" />
-            Trending
-          </div>
+
+        {event.event_type && (
+          <span className="event-type-badge">{event.event_type.replace('_', ' ')}</span>
         )}
-        <div className="event-price-badge">{e.price}</div>
+
+        <div className="event-price-badge">
+          {isFree ? 'Free' : `From $${minPrice}`}
+        </div>
       </div>
 
+      {/* Body */}
       <div className="event-body">
-        <p className="event-name">{e.name}</p>
+        <p className="event-name">{event.title}</p>
+
         <div className="event-meta">
           <div className="event-meta-row">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
-            </svg>
-            {e.date} · {e.time}
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+            {new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            {event.time ? ` · ${event.time}` : ''}
           </div>
           <div className="event-meta-row">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
-            </svg>
-            {e.location}
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+            {event.location}
           </div>
         </div>
-        <div className="event-divider" />
-        <div className="event-footer">
-          <div className="event-going">
-            <span className="going-dot" />
-            {e.going}
+
+        {/* Tier selector */}
+        {event.ticket_tiers && event.ticket_tiers.length > 1 && (
+          <div className="tier-selector">
+            {event.ticket_tiers.map((t) => (
+              <button
+                key={t.id}
+                className={`tier-btn${selectedTier?.id === t.id ? ' active' : ''}`}
+                onClick={() => setSelectedTier(t)}
+                disabled={t.capacity !== null && t.sold_count >= t.capacity}
+              >
+                {t.name}
+                <span className="tier-price">{t.price === 0 ? 'Free' : `$${t.price}`}</span>
+              </button>
+            ))}
           </div>
-          <span className="event-host">{e.host}</span>
+        )}
+
+        {/* Capacity bar */}
+        {selectedTier?.capacity && (
+          <div className="capacity-bar">
+            <div className="capacity-fill" style={{ width: `${Math.min(soldPct, 100)}%` }} />
+          </div>
+        )}
+
+        <div className="event-footer-row">
+          <span className="event-going">
+            {selectedTier?.sold_count ?? 0} going
+          </span>
+          <span className="event-cap">
+            {selectedTier?.capacity ? `${selectedTier.capacity} cap` : 'Open'}
+          </span>
         </div>
 
         <button
+          className={`event-buy-btn${isFree ? ' free' : ' paid'}`}
           onClick={handleBuy}
-          disabled={loading}
-          className={`event-buy-btn ${e.ticketPrice === 0 ? 'free' : 'paid'}`}
+          disabled={loading || !available}
         >
-          {loading ? 'Redirecting…' : e.ticketPrice === 0 ? 'RSVP Free' : `Get Tickets · ${e.price}`}
+          {loading
+            ? 'Redirecting…'
+            : !available
+            ? 'Sold Out'
+            : isFree
+            ? 'RSVP Free'
+            : `Get Tickets${selectedTier ? ` · $${selectedTier.price}` : ''}`
+          }
         </button>
       </div>
     </div>
   )
 }
 
+/* ── Events section ────────────────────────────────────────────────────────── */
+
 function EventsSection() {
-  const [tab, setTab] = useState('Trending')
+  const [events, setEvents] = useState<DbEvent[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const loadEvents = useCallback(async () => {
+    try {
+      const res = await fetch('/api/events')
+      const data = await res.json()
+      setEvents(data.events ?? [])
+    } catch {
+      setEvents([])
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { loadEvents() }, [loadEvents])
 
   return (
-    <section className="events" id="events">
+    <section className="events-section" id="events">
       <div className="wrap">
-        <div className="events-top reveal">
+        <div className="section-header reveal">
           <div>
-            <p className="section-eyebrow">Discover</p>
-            <h2 className="section-title">Trending in Atlanta</h2>
+            <p className="eyebrow-label">Discover</p>
+            <h2 className="section-heading">Happening in Atlanta</h2>
           </div>
-          <a href="#events" className="see-all">
-            View all
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-          </a>
         </div>
 
-        <div className="events-tabs reveal d1">
-          {['Trending', 'Soon', 'New'].map((t) => (
-            <button key={t} className={`tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
-              {t}
-            </button>
-          ))}
-        </div>
+        {loading ? (
+          <div className="events-loading">
+            {[1, 2, 3].map((i) => <div key={i} className="event-skeleton" />)}
+          </div>
+        ) : events.length === 0 ? (
+          <div className="events-empty">
+            <div className="empty-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+            </div>
+            <p className="empty-title">No events yet.</p>
+            <p className="empty-sub">Be the first to host something in Atlanta.</p>
+            <a href="/login" className="btn-primary" style={{ marginTop: 20 }}>Create an Event</a>
+          </div>
+        ) : (
+          <div className="events-grid">
+            {events.map((e, i) => (
+              <div key={e.id} className={`reveal${i < 3 ? ` d${i + 1}` : ''}`}>
+                <EventCard event={e} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
 
-        <div className="events-grid">
-          {EVENTS.map((e, i) => <EventCard key={e.name} e={e} i={i} />)}
+/* ── Host section ──────────────────────────────────────────────────────────── */
+
+function HostSection() {
+  return (
+    <section className="host-section" id="host">
+      <div className="wrap">
+        <div className="host-grid">
+          <div className="host-copy reveal">
+            <p className="eyebrow-label">For Hosts</p>
+            <h2 className="section-heading">
+              Turn your event into<br />
+              <span className="text-red">real income.</span>
+            </h2>
+            <p className="host-body">
+              Create your event, set ticket tiers, and go live in under 5 minutes.
+              Same-night payouts. Real-time sales dashboard. One link for everything.
+            </p>
+
+            <div className="host-stats">
+              <div className="host-stat">
+                <p className="host-stat-val">85<span>%</span></p>
+                <p className="host-stat-label">You keep</p>
+              </div>
+              <div className="host-stat">
+                <p className="host-stat-val">5<span>min</span></p>
+                <p className="host-stat-label">To go live</p>
+              </div>
+              <div className="host-stat">
+                <p className="host-stat-val">$0</p>
+                <p className="host-stat-label">Upfront cost</p>
+              </div>
+            </div>
+
+            <a href="/login" className="btn-primary">
+              Start Hosting
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+            </a>
+          </div>
+
+          {/* Revenue calc */}
+          <div className="reveal d2">
+            <div className="calc-card">
+              <p className="calc-label-top">Example payout</p>
+
+              <div className="calc-row">
+                <span>Ticket price</span>
+                <strong>$20</strong>
+              </div>
+              <div className="calc-row">
+                <span>Tickets sold</span>
+                <strong><AnimCounter target={800} /></strong>
+              </div>
+              <div className="calc-row">
+                <span>Gross revenue</span>
+                <strong>$<AnimCounter target={16000} /></strong>
+              </div>
+              <div className="calc-row muted">
+                <span>Metlanta fee (15%)</span>
+                <span className="red-text">−$<AnimCounter target={2400} /></span>
+              </div>
+              <div className="calc-payout">
+                <span>You take home</span>
+                <span className="payout-val">$<AnimCounter target={13600} /></span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
   )
 }
 
-/* ── How It Works ──────────────────────────────────────────────────────────── */
+/* ── How it works ──────────────────────────────────────────────────────────── */
 
 function HowSection() {
   const steps = [
     {
-      title: 'Discover Events',
-      body: 'Browse after proms, kickbacks, day parties, and more happening right now in Atlanta.',
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E03030" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-        </svg>
-      ),
+      n: '01', title: 'Create your event',
+      body: 'Set a date, location, and ticket tiers. Upload a flyer. Go live in under 5 minutes.',
     },
     {
-      title: 'Join or Host',
-      body: 'Buy a ticket in seconds or create your own event page, set ticket tiers, and go live in under 5 minutes.',
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E03030" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-        </svg>
-      ),
+      n: '02', title: 'Share one link',
+      body: 'Post it in your bio, stories, and group chats. Watch real-time ticket sales roll in.',
     },
     {
-      title: 'Get Paid / Go Out',
-      body: 'Hosts collect same-night payouts via Stripe. Attendees get QR tickets and show up. Everyone wins.',
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E03030" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-        </svg>
-      ),
+      n: '03', title: 'Get paid',
+      body: 'Stripe powers every transaction. 85% goes directly to you. Same-night payout.',
     },
   ]
 
   return (
-    <section className="how" id="how-it-works">
+    <section className="how-section">
       <div className="wrap">
         <div className="how-header reveal">
-          <p className="section-eyebrow">How It Works</p>
-          <h2 className="section-title">Three steps. One platform.</h2>
-          <p>No experience needed. If you can share a story, you can run an event.</p>
+          <p className="eyebrow-label">How It Works</p>
+          <h2 className="section-heading">Three steps to sold out.</h2>
         </div>
-
-        <div className="how-steps">
+        <div className="how-grid">
           {steps.map((s, i) => (
-            <div key={s.title} className={`how-step reveal d${i + 1}`}>
-              <div className="how-icon">{s.icon}</div>
-              <div className="how-num">0{i + 1}</div>
+            <div key={s.n} className={`how-card reveal d${i + 1}`}>
+              <span className="how-num">{s.n}</span>
               <h3 className="how-title">{s.title}</h3>
               <p className="how-body">{s.body}</p>
             </div>
@@ -517,247 +512,40 @@ function HowSection() {
   )
 }
 
-/* ── Revenue Section ───────────────────────────────────────────────────────── */
-
-function RevenueCounter({ target, suffix = '' }: { target: number; suffix?: string }) {
-  const { value, ref } = useCounter(target)
-  return <span ref={ref} className="counter">{value.toLocaleString()}{suffix}</span>
-}
-
-function RevenueSection() {
-  return (
-    <section className="revenue" id="host">
-      <div className="wrap">
-        <div className="revenue-grid">
-          <div className="revenue-copy reveal">
-            <p className="section-eyebrow">For Hosts</p>
-            <h2 className="section-title">
-              Turn your event into<br />
-              <span className="gradient-text">real income.</span>
-            </h2>
-            <p>
-              One ticket link. Multiple tiers. Live sales dashboard. Same-night
-              payout to your bank. Every function you throw builds your reputation.
-            </p>
-
-            <div className="revenue-features">
-              {[
-                'Live in 5 minutes — no experience needed',
-                'General, VIP, Early Bird, and Free tiers',
-                'Real-time sales dashboard and guest list',
-                'Same-night Stripe payouts',
-              ].map((f) => (
-                <div key={f} className="revenue-feature">
-                  <div className="feature-check">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#E03030" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </div>
-                  {f}
-                </div>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <a href="#host" className="btn-primary">
-                Start Hosting Free
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-              </a>
-              <a href="#pricing" className="btn-ghost">See Pricing</a>
-            </div>
-          </div>
-
-          {/* Calculator visual */}
-          <div className="reveal d2">
-            <div className="revenue-calc">
-              <p className="calc-title">Revenue Calculator</p>
-
-              <div className="calc-row">
-                <span className="calc-label">Ticket price</span>
-                <span className="calc-val">$20</span>
-              </div>
-              <div className="calc-row">
-                <span className="calc-label">Attendees</span>
-                <span className="calc-val"><RevenueCounter target={800} /></span>
-              </div>
-              <div className="calc-row">
-                <span className="calc-label">Gross revenue</span>
-                <span className="calc-val">$<RevenueCounter target={16000} /></span>
-              </div>
-              <div className="calc-row">
-                <span className="calc-label">Metlanta fee (15%)</span>
-                <span className="calc-val red-text">−$<RevenueCounter target={2400} /></span>
-              </div>
-
-              <div className="calc-total">
-                <span className="calc-total-label">You take home</span>
-                <span className="calc-total-val">$<RevenueCounter target={13600} /></span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-/* ── Social Proof ──────────────────────────────────────────────────────────── */
-
-function ProofSection() {
-  return (
-    <section className="proof">
-      <div className="wrap">
-        <div className="proof-grid reveal">
-          <div className="proof-item">
-            <p className="proof-num">ATL</p>
-            <p className="proof-label">Live in Atlanta</p>
-            <p className="proof-sublabel">More cities coming soon</p>
-          </div>
-          <div className="proof-item">
-            <p className="proof-num">DAILY</p>
-            <p className="proof-label">New events added</p>
-            <p className="proof-sublabel">After proms, kickbacks, pop-ups</p>
-          </div>
-          <div className="proof-item">
-            <p className="proof-num">FREE</p>
-            <p className="proof-label">To list your event</p>
-            <p className="proof-sublabel">5% only on paid tickets</p>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-/* ── Pricing ───────────────────────────────────────────────────────────────── */
-
-const PRICING_FEATURES = [
-  'Unlimited event pages',
-  'Custom ticket tiers — General, VIP, Early Bird, Free',
-  'Live sales dashboard',
-  'QR code check-in',
-  'Same-night payouts via Stripe',
-  'Share link + embed anywhere',
-  'Guest list management',
-  'Event analytics',
-]
-
-function PricingSection() {
-  return (
-    <section className="events" id="pricing" style={{ paddingTop: 96, paddingBottom: 100, background: '#0D0D0D', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-      <div className="wrap">
-        <div className="events-top reveal">
-          <div>
-            <p className="section-eyebrow">Pricing</p>
-            <h2 className="section-title">Simple. No surprises.</h2>
-          </div>
-        </div>
-        <div className="reveal d1" style={{ maxWidth: 560 }}>
-          <div className="revenue-calc" style={{ padding: '32px' }}>
-            <div style={{ marginBottom: 24 }}>
-              <p className="section-eyebrow" style={{ marginBottom: 8 }}>All hosts</p>
-              <p style={{ fontSize: 'clamp(36px, 6vw, 56px)', fontWeight: 900, color: '#fff', letterSpacing: '-0.03em', lineHeight: 1 }}>Free</p>
-              <p style={{ fontSize: 14, color: 'var(--gray)', marginTop: 6 }}>to create events and list on Metlanta</p>
-              <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 28, fontWeight: 900, color: 'var(--red)' }}>5%</span>
-                <span style={{ fontSize: 14, color: 'var(--gray)' }}>+ payment processing on paid tickets only</span>
-              </div>
-            </div>
-
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 24, marginBottom: 20 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 16 }}>Everything included</p>
-              <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {PRICING_FEATURES.map((f) => (
-                  <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'rgba(255,255,255,0.75)' }}>
-                    <span style={{ color: 'var(--green)', flexShrink: 0 }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                    </span>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <a href="#host" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-              Create Your First Event
-            </a>
-            <p style={{ textAlign: 'center', fontSize: 12, color: 'rgba(255,255,255,0.2)', marginTop: 12 }}>
-              No credit card needed to start
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-/* ── Final CTA ─────────────────────────────────────────────────────────────── */
+/* ── CTA ───────────────────────────────────────────────────────────────────── */
 
 function CTASection() {
   const [email, setEmail] = useState('')
   const [done, setDone] = useState(false)
 
-  function submit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!email) return
-    setDone(true)
-    setEmail('')
-  }
-
   return (
-    <section className="cta-section" id="download">
+    <section className="cta-section">
       <div className="wrap">
-        <div className="reveal">
-          <p className="section-eyebrow" style={{ marginBottom: 20 }}>Ready?</p>
-          <h2 className="section-title">
-            Your first event<br />starts tonight.
-          </h2>
-          <p>
-            No experience. No upfront cost. Just your idea, a date, and the
-            drive to throw something Atlanta won&apos;t forget.
-          </p>
-
-          <div className="cta-buttons">
-            <a href="#host" className="btn-primary">
-              Create Your Event — It&apos;s Free
-            </a>
-            <a href="#events" className="btn-ghost">
-              Explore Events
-            </a>
+        <div className="cta-inner reveal">
+          <h2 className="cta-title">Your first event<br />starts tonight.</h2>
+          <p className="cta-sub">No experience. No upfront cost. Just show up.</p>
+          <div className="cta-actions">
+            <a href="/login" className="btn-primary">Create Your Event — Free</a>
+            <a href="#events" className="btn-ghost">Explore Events</a>
           </div>
-          <p className="cta-note">Free to list · 15% on ticket sales only · No monthly costs</p>
 
-          <div className="cta-or">
-            <div className="or-line" />
-            <span className="or-text">or</span>
-            <div className="or-line" />
-          </div>
+          <div className="cta-divider"><div className="or-line" /><span>or join the waitlist</span><div className="or-line" /></div>
 
           {!done ? (
-            <form className="waitlist-form" onSubmit={submit}>
+            <form className="waitlist-row" onSubmit={(e) => { e.preventDefault(); if (email) setDone(true) }}>
               <input
-                type="email"
+                type="email" placeholder="your@email.com"
+                value={email} onChange={(e) => setEmail(e.target.value)} required
                 className="waitlist-input"
-                placeholder="your@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
               />
-              <button type="submit" className="waitlist-submit">Join Waitlist</button>
+              <button type="submit" className="waitlist-btn">Notify Me</button>
             </form>
           ) : (
-            <div className="waitlist-success">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-              You&apos;re on the list — we&apos;ll hit you when we launch!
-            </div>
+            <p className="waitlist-done">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              You&apos;re on the list.
+            </p>
           )}
-          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)', marginTop: 12 }}>
-            No spam. Launch updates and early host access only.
-          </p>
         </div>
       </div>
     </section>
@@ -767,66 +555,41 @@ function CTASection() {
 /* ── Footer ────────────────────────────────────────────────────────────────── */
 
 function Footer() {
-  const cols = {
-    Platform: ['Explore Events', 'Host an Event', 'Pricing', 'How It Works'],
-    Company: ['About', 'Blog', 'Careers', 'Contact'],
-    Legal: ['Privacy Policy', 'Terms of Service', 'Cookies'],
-    Cities: ['Atlanta', 'Miami', 'Houston', 'NYC', 'LA'],
-  }
-
   return (
     <footer className="footer">
-      <div className="footer-inner">
-        <div className="footer-top">
-          <div className="footer-brand">
-            <div className="footer-logo">
-              <div className="footer-logo-wrap">
-                <Image src="/logo.png" alt="Metlanta" height={24} width={53} className="footer-logo-img" />
-              </div>
-              <span className="footer-logo-text">Metlanta</span>
-            </div>
-            <p className="footer-tagline">
-              The social event marketplace for Atlanta&apos;s party generation.
-            </p>
+      <div className="wrap">
+        <div className="footer-inner">
+          <div className="footer-brand-col">
+            <span className="footer-wordmark">METLANTA</span>
+            <p className="footer-tag">Atlanta&apos;s social event marketplace.</p>
             <div className="footer-socials">
-              {[
-                {
-                  label: 'Instagram',
-                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" /></svg>,
-                },
-                {
-                  label: 'TikTok',
-                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.34-6.34V8.72a8.16 8.16 0 004.77 1.52V6.79a4.85 4.85 0 01-1.01-.1z" /></svg>,
-                },
-                {
-                  label: 'X',
-                  icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.213 5.567zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>,
-                },
-              ].map((s) => (
-                <a key={s.label} href="#" className="social-btn" aria-label={s.label}>{s.icon}</a>
-              ))}
+              <a href="#" aria-label="Instagram" className="social-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" /></svg>
+              </a>
+              <a href="#" aria-label="TikTok" className="social-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.34-6.34V8.72a8.16 8.16 0 004.77 1.52V6.79a4.85 4.85 0 01-1.01-.1z" /></svg>
+              </a>
             </div>
           </div>
 
-          {Object.entries(cols).map(([title, links]) => (
-            <div key={title} className="footer-col">
-              <p className="footer-col-title">{title}</p>
-              <ul>
-                {links.map((l) => (
-                  <li key={l}><a href="#">{l}</a></li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
+          <div className="footer-links-col">
+            <p className="footer-col-title">Platform</p>
+            <a href="#events">Explore Events</a>
+            <a href="/login">Host an Event</a>
+            <a href="/dashboard">Dashboard</a>
+          </div>
 
-        <div className="footer-bottom">
-          <p className="footer-copy">© 2026 Metlanta, Inc. All rights reserved. Built in Atlanta, GA.</p>
-          <div className="footer-legal">
+          <div className="footer-links-col">
+            <p className="footer-col-title">Company</p>
+            <a href="#">About</a>
+            <a href="#">Contact</a>
             <a href="#">Privacy</a>
             <a href="#">Terms</a>
-            <a href="#">Cookies</a>
           </div>
+        </div>
+        <div className="footer-bottom">
+          <p>© 2026 Metlanta, Inc. Built in Atlanta, GA.</p>
+          <p>15% platform fee on paid tickets only · Free to list</p>
         </div>
       </div>
     </footer>
@@ -837,16 +600,13 @@ function Footer() {
 
 export default function Home() {
   useReveal()
-
   return (
     <main>
       <Navbar />
       <Hero />
       <EventsSection />
       <HowSection />
-      <RevenueSection />
-      <ProofSection />
-      <PricingSection />
+      <HostSection />
       <CTASection />
       <Footer />
     </main>
