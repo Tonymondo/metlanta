@@ -142,11 +142,31 @@ export default function AccountPage() {
           )}
         </div>
 
-        {/* Membership */}
+        {/* Your Role */}
         <div className="acc-card">
-          <h2 className="acc-card-title">Membership</h2>
-          <p className="acc-card-label">Status</p>
-          <span className="acc-membership-badge">Not Active</span>
+          <h2 className="acc-card-title">Your Role</h2>
+          <div className="acc-role-row">
+            <div>
+              <p className="acc-card-label">Current role</p>
+              <span className="acc-role-chip acc-role-chip--current">
+                {session?.user?.role ?? 'attendee'}
+              </span>
+            </div>
+            <div className="acc-role-desc">
+              {session?.user?.role === 'host' && 'You can create events and sell tickets.'}
+              {session?.user?.role === 'promoter' && 'You can promote events and build your audience.'}
+              {(!session?.user?.role || session?.user?.role === 'attendee') && 'Upgrade to host or promoter to start creating events.'}
+              {session?.user?.role === 'admin' && 'Full platform access.'}
+            </div>
+          </div>
+          {(session?.user?.role === 'attendee' || !session?.user?.role) && (
+            <div className="acc-role-upgrade">
+              <a href="/dashboard" className="acc-action-btn" style={{ marginBottom: 0 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                Upgrade to Host — Free
+              </a>
+            </div>
+          )}
         </div>
 
         {/* Actions */}

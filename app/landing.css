@@ -175,6 +175,8 @@ img { display: block; max-width: 100%; }
 
 /* ── HOW SECTION ─────────────────────────────────────────────────────────── */
 .how-section { padding: 100px 0; background: var(--black); }
+
+/* Legacy grid (kept for backwards compat) */
 .how-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 @media (max-width: 768px) { .how-grid { grid-template-columns: 1fr; gap: 16px; } }
 .how-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 28px; transition: border-color 0.2s; }
@@ -182,6 +184,39 @@ img { display: block; max-width: 100%; }
 .how-num { display: block; font-family: var(--display); font-size: 42px; letter-spacing: 2px; color: rgba(224,48,48,0.25); margin-bottom: 16px; }
 .how-title { font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 10px; }
 .how-body { font-size: 13px; color: var(--gray3); line-height: 1.7; }
+
+/* ── How steps — redesigned ─────────────────────────────────────────────── */
+.how-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+@media (max-width: 768px) { .how-steps { grid-template-columns: 1fr; gap: 12px; } }
+
+.how-step { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 28px 24px 24px; transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s; position: relative; overflow: hidden; }
+.how-step::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--red) 0%, transparent 100%); opacity: 0; transition: opacity 0.25s; }
+.how-step:hover { border-color: rgba(224,48,48,0.25); transform: translateY(-4px); box-shadow: 0 16px 48px rgba(0,0,0,0.4); }
+.how-step:hover::before { opacity: 1; }
+
+.how-step-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.how-step-num { font-family: var(--display); font-size: 13px; letter-spacing: 2px; color: var(--red); background: rgba(224,48,48,0.08); border: 1px solid rgba(224,48,48,0.22); border-radius: 20px; padding: 4px 12px; }
+.how-step-emoji { font-size: 28px; line-height: 1; }
+.how-step-title { font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 10px; letter-spacing: -0.02em; line-height: 1.2; }
+.how-step-body { font-size: 13px; color: rgba(255,255,255,0.5); line-height: 1.75; margin-bottom: 18px; }
+.how-step-list { list-style: none; display: flex; flex-direction: column; gap: 9px; }
+.how-step-list li { display: flex; align-items: center; gap: 9px; font-size: 12px; color: rgba(255,255,255,0.4); line-height: 1.4; }
+
+/* ── Dashboard event share panel ────────────────────────────────────────── */
+.dash-share-panel { display: flex; flex-direction: column; gap: 20px; }
+.dash-share-card { background: var(--surface); border: 1px solid rgba(34,197,94,0.18); border-radius: var(--r); padding: 24px; }
+.dash-share-label { font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gray3); margin-bottom: 12px; }
+.dash-share-url-row { display: flex; gap: 8px; align-items: stretch; margin-bottom: 10px; }
+.dash-share-url { flex: 1; padding: 10px 14px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 9px; font-size: 12px; color: rgba(255,255,255,0.55); word-break: break-all; font-family: monospace; line-height: 1.5; }
+.dash-share-hint { font-size: 12px; color: var(--gray3); }
+.dash-share-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+
+/* ── Account role section ───────────────────────────────────────────────── */
+.acc-role-row { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.acc-role-chip { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; padding: 5px 14px; border-radius: 20px; margin-top: 6px; }
+.acc-role-chip--current { background: rgba(224,48,48,0.1); border: 1px solid rgba(224,48,48,0.25); color: var(--red); }
+.acc-role-desc { font-size: 13px; color: var(--gray3); line-height: 1.6; }
+.acc-role-upgrade { margin-top: 4px; }
 
 /* ── CTA SECTION ─────────────────────────────────────────────────────────── */
 .cta-section { padding: 100px 0; background: var(--black2); }
@@ -298,6 +333,53 @@ img { display: block; max-width: 100%; }
 .dash-tier-row-form { display: flex; gap: 12px; align-items: flex-end; margin-bottom: 12px; }
 .dash-error { font-size: 13px; color: var(--red); background: var(--red-dim); border: 1px solid rgba(224,48,48,0.2); border-radius: 8px; padding: 12px 16px; }
 .dash-success-msg { display: inline-flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; color: var(--green); background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2); padding: 16px 20px; border-radius: var(--r); }
+
+/* ── Dashboard layout root ─────────────────────────────────────────────── */
+.dash-layout { display: flex; min-height: 100svh; background: var(--black); padding-top: 58px; }
+@media (max-width: 480px) { .dash-layout { padding-top: 52px; } }
+
+/* ── Sidebar interior structure ─────────────────────────────────────────── */
+.dash-sidebar-top { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+.dash-sidebar-foot { padding-top: 16px; border-top: 1px solid var(--border); }
+.dash-wordmark { display: block; font-family: var(--display); font-size: 16px; letter-spacing: 3px; color: #fff; text-decoration: none; padding: 4px 12px 20px; transition: opacity 0.15s; }
+.dash-wordmark:hover { opacity: 0.75; }
+.dash-nav { display: flex; flex-direction: column; gap: 2px; }
+.dash-nav-item { display: flex; align-items: center; gap: 9px; padding: 9px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--gray); cursor: pointer; transition: all 0.15s; background: none; border: none; width: 100%; text-align: left; font-family: var(--font); }
+.dash-nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+.dash-nav-item.active { background: rgba(224,48,48,0.1); color: var(--red); }
+
+/* ── Sidebar user info ──────────────────────────────────────────────────── */
+.dash-user-row { display: flex; align-items: center; gap: 10px; }
+.dash-avatar { border-radius: 50%; object-fit: cover; }
+.dash-avatar-fallback { width: 32px; height: 32px; border-radius: 50%; background: var(--red); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: #fff; flex-shrink: 0; }
+.dash-uname { font-size: 13px; font-weight: 700; color: #fff; line-height: 1.2; }
+.dash-urole { font-size: 11px; color: var(--gray3); text-transform: capitalize; }
+.dash-role-badge { display: inline-block; font-size: 9px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; padding: 2px 8px; border-radius: 20px; background: rgba(224,48,48,0.12); border: 1px solid rgba(224,48,48,0.25); color: var(--red); margin-top: 3px; }
+
+/* ── Ghost button ───────────────────────────────────────────────────────── */
+.dash-ghost-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 14px; background: transparent; color: var(--gray); font-size: 12px; font-weight: 600; font-family: var(--font); border-radius: var(--r-sm); border: 1px solid var(--border); cursor: pointer; transition: all 0.18s; text-decoration: none; white-space: nowrap; }
+.dash-ghost-btn:hover { color: #fff; border-color: var(--border2); background: rgba(255,255,255,0.04); }
+
+/* ── Mobile sidebar — slide-in overlay (overrides display:none) ─────────── */
+@media (max-width: 860px) {
+  .dash-sidebar { display: flex; position: fixed; top: 0; left: 0; bottom: 0; z-index: 250; transform: translateX(-100%); transition: transform 0.28s cubic-bezier(.4,0,.2,1); width: 260px; height: 100svh; padding: 24px 12px; }
+  .dash-sidebar.open { transform: translateX(0); }
+  .dash-overlay { z-index: 240; }
+}
+@media (max-width: 480px) { .dash-mobile-bar { top: 52px; } }
+
+/* ── Flyer upload zone ──────────────────────────────────────────────────── */
+.flyer-upload-zone { position: relative; border: 2px dashed var(--border); border-radius: var(--r); padding: 32px 16px; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; background: rgba(255,255,255,0.02); overflow: hidden; }
+.flyer-upload-zone:hover, .flyer-upload-zone.drag-over { border-color: rgba(224,48,48,0.4); background: var(--red-dim); }
+.flyer-upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.flyer-upload-icon { width: 48px; height: 48px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+.flyer-upload-text { font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.7); margin-bottom: 4px; }
+.flyer-upload-sub { font-size: 12px; color: var(--gray3); }
+.flyer-preview { position: relative; border-radius: var(--r); overflow: hidden; }
+.flyer-preview-img { width: 100%; max-height: 240px; object-fit: cover; display: block; border-radius: var(--r); }
+.flyer-preview-remove { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; border-radius: 50%; background: rgba(0,0,0,0.75); border: 1px solid rgba(255,255,255,0.15); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; line-height: 1; transition: background 0.15s; font-family: var(--font); }
+.flyer-preview-remove:hover { background: var(--red); border-color: var(--red); }
+.flyer-preview-label { font-size: 11px; color: var(--gray3); margin-top: 8px; text-align: center; }
 
 /* ── Account / Tickets / Help shared page shell ───────────────────────────── */
 .acc-page { min-height: 100svh; background: var(--black); display: flex; flex-direction: column; }
