@@ -40,7 +40,7 @@ function DashboardInner() {
   const [flyerPreview, setFlyerPreview] = useState('')
   const [flyerDragOver, setFlyerDragOver] = useState(false)
 
-  const isHost = session?.user?.role === 'host' || session?.user?.role === 'admin'
+  const isHost = session?.user?.role === 'host' || session?.user?.role === 'promoter' || session?.user?.role === 'admin'
 
   const loadData = useCallback(async () => {
     if (!session?.user?.id || !isHost) { setLoading(false); return }
@@ -196,9 +196,9 @@ function DashboardInner() {
               ? <Image src={session.user.image} alt="" width={32} height={32} className="dash-avatar" />
               : <div className="dash-avatar-fallback">{session?.user?.name?.[0] ?? '?'}</div>
             }
-            <div>
-              <p className="dash-uname">{session?.user?.name ?? 'User'}</p>
-              <p className="dash-urole">{session?.user?.role ?? 'attendee'}</p>
+            <div style={{ minWidth: 0 }}>
+              <p className="dash-uname" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session?.user?.name ?? 'User'}</p>
+              <span className="dash-role-badge">{session?.user?.role ?? 'attendee'}</span>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>

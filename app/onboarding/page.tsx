@@ -56,7 +56,7 @@ const ROLES = [
 ]
 
 export default function OnboardingPage() {
-  const { data: session } = useSession()
+  const { data: session, update } = useSession()
   const router = useRouter()
 
   const [selected, setSelected] = useState<Role | null>(null)
@@ -94,6 +94,8 @@ export default function OnboardingPage() {
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Something went wrong.'); return }
+      // Refresh JWT so role + onboarding_complete are reflected immediately
+      await update()
       router.push(selected === 'host' || selected === 'promoter' ? '/dashboard' : '/')
     } catch {
       setError('Something went wrong. Please try again.')

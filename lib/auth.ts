@@ -41,12 +41,12 @@ export const authOptions: NextAuthOptions = {
       }
       return true
     },
-    async jwt({ token, user }) {
-      // On initial sign-in, user is populated; always refresh from DB on first load
-      if (user?.email || token.id) {
-        const email = user?.email ?? token.email
+    async jwt({ token, user, trigger }) {
+      // Refresh from DB on sign-in OR when update() is called client-side
+      if (user?.email || trigger === 'update' || !token.id) {
+        const email = (user?.email ?? token.email) as string | undefined
         if (email) {
-          const dbUser = await getUserByEmail(email as string)
+          const dbUser = await getUserByEmail(email)
           if (dbUser) {
             token.id = dbUser.id
             token.role = dbUser.role as 'attendee' | 'host' | 'promoter' | 'admin'
