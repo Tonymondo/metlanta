@@ -36,6 +36,9 @@ function DashboardInner() {
   const [createLoading, setCreateLoading] = useState(false)
   const [createDone, setCreateDone] = useState(false)
   const [createError, setCreateError] = useState('')
+  const [flyerFile, setFlyerFile] = useState<File | null>(null)
+  const [flyerPreview, setFlyerPreview] = useState('')
+  const [flyerDragOver, setFlyerDragOver] = useState(false)
 
   const isHost = session?.user?.role === 'host' || session?.user?.role === 'admin'
 
@@ -83,12 +86,33 @@ function DashboardInner() {
     setHostLoading(false)
   }
 
+  function handleFlyerSelect(file: File) {
+    if (!file.type.startsWith('image/')) { setCreateError('Flyer must be an image file.'); return }
+    if (file.size > 5 * 1024 * 1024) { setCreateError('Flyer image must be under 5MB.'); return }
+    setCreateError('')
+    setFlyerFile(file)
+    const reader = new FileReader()
+    reader.onload = (ev) => setFlyerPreview(ev.target?.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  function resetCreateForm() {
+    setCreateForm({
+      title: '', date: '', time: '', end_time: '', location: '', city: 'Atlanta',
+      capacity: '', description: '', event_type: '', age_policy: '',
+      tiers: [{ name: 'General', price: '' }, { name: '', price: '' }],
+    })
+    setFlyerFile(null)
+    setFlyerPreview('')
+  }
+
   // Create event
   async function handleCreateEvent(e: React.FormEvent) {
     e.preventDefault()
     setCreateLoading(true)
     setCreateError('')
     try {
+      // Step 1: create event
       const res = await fetch('/api/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -103,7 +127,29 @@ function DashboardInner() {
       })
       const data = await res.json()
       if (!res.ok) { setCreateError(data.error ?? 'Failed to create event'); return }
+
+      const eventId = data.event.id
+
+      // Step 2: upload flyer if selected
+      if (flyerFile && eventId) {
+        const fd = new FormData()
+        fd.append('file', flyerFile)
+        fd.append('bucket', 'event-flyers')
+        fd.append('ref_id', eventId)
+        const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd })
+        if (uploadRes.ok) {
+          const { url } = await uploadRes.json()
+          // Step 3: attach flyer URL to event
+          await fetch(`/api/events/${eventId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ flyer_url: url }),
+          })
+        }
+      }
+
       setCreateDone(true)
+      resetCreateForm()
       await loadData()
       setTimeout(() => { setCreateDone(false); setTab('events') }, 1800)
     } catch {
@@ -325,6 +371,53 @@ function DashboardInner() {
                         <textarea value={createForm.description} onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })} placeholder="Tell people what to expect…" rows={3} />
                       </div>
                     </div>
+                  </fieldset>
+
+                  <fieldset className="dash-fieldset">
+                    <legend>Event Flyer</legend>
+                    <p className="dash-fieldset-note">Upload a flyer or cover image. JPG, PNG, WebP · Max 5MB.</p>
+                    {flyerPreview ? (
+                      <div className="flyer-preview">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={flyerPreview} alt="Flyer preview" className="flyer-preview-img" />
+                        <button
+                          type="button"
+                          className="flyer-preview-remove"
+                          onClick={() => { setFlyerFile(null); setFlyerPreview('') }}
+                          aria-label="Remove flyer"
+                        >
+                          ×
+                        </button>
+                        <p className="flyer-preview-label">{flyerFile?.name}</p>
+                      </div>
+                    ) : (
+                      <div
+                        className={`flyer-upload-zone${flyerDragOver ? ' drag-over' : ''}`}
+                        onDragOver={(ev) => { ev.preventDefault(); setFlyerDragOver(true) }}
+                        onDragLeave={() => setFlyerDragOver(false)}
+                        onDrop={(ev) => {
+                          ev.preventDefault()
+                          setFlyerDragOver(false)
+                          const f = ev.dataTransfer.files[0]
+                          if (f) handleFlyerSelect(f)
+                        }}
+                      >
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(ev) => { const f = ev.target.files?.[0]; if (f) handleFlyerSelect(f) }}
+                        />
+                        <div className="flyer-upload-icon">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--gray)' }}>
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                            <circle cx="8.5" cy="8.5" r="1.5" />
+                            <polyline points="21 15 16 10 5 21" />
+                          </svg>
+                        </div>
+                        <p className="flyer-upload-text">Drop your flyer here or tap to browse</p>
+                        <p className="flyer-upload-sub">JPG, PNG, WebP · Max 5MB</p>
+                      </div>
+                    )}
                   </fieldset>
 
                   <fieldset className="dash-fieldset">
