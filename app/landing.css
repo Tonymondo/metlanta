@@ -175,6 +175,8 @@ img { display: block; max-width: 100%; }
 
 /* ── HOW SECTION ─────────────────────────────────────────────────────────── */
 .how-section { padding: 100px 0; background: var(--black); }
+
+/* Legacy grid (kept for backwards compat) */
 .how-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 @media (max-width: 768px) { .how-grid { grid-template-columns: 1fr; gap: 16px; } }
 .how-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 28px; transition: border-color 0.2s; }
@@ -182,6 +184,39 @@ img { display: block; max-width: 100%; }
 .how-num { display: block; font-family: var(--display); font-size: 42px; letter-spacing: 2px; color: rgba(224,48,48,0.25); margin-bottom: 16px; }
 .how-title { font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 10px; }
 .how-body { font-size: 13px; color: var(--gray3); line-height: 1.7; }
+
+/* ── How steps — redesigned ─────────────────────────────────────────────── */
+.how-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+@media (max-width: 768px) { .how-steps { grid-template-columns: 1fr; gap: 12px; } }
+
+.how-step { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 28px 24px 24px; transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s; position: relative; overflow: hidden; }
+.how-step::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--red) 0%, transparent 100%); opacity: 0; transition: opacity 0.25s; }
+.how-step:hover { border-color: rgba(224,48,48,0.25); transform: translateY(-4px); box-shadow: 0 16px 48px rgba(0,0,0,0.4); }
+.how-step:hover::before { opacity: 1; }
+
+.how-step-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.how-step-num { font-family: var(--display); font-size: 13px; letter-spacing: 2px; color: var(--red); background: rgba(224,48,48,0.08); border: 1px solid rgba(224,48,48,0.22); border-radius: 20px; padding: 4px 12px; }
+.how-step-emoji { font-size: 28px; line-height: 1; }
+.how-step-title { font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 10px; letter-spacing: -0.02em; line-height: 1.2; }
+.how-step-body { font-size: 13px; color: rgba(255,255,255,0.5); line-height: 1.75; margin-bottom: 18px; }
+.how-step-list { list-style: none; display: flex; flex-direction: column; gap: 9px; }
+.how-step-list li { display: flex; align-items: center; gap: 9px; font-size: 12px; color: rgba(255,255,255,0.4); line-height: 1.4; }
+
+/* ── Dashboard event share panel ────────────────────────────────────────── */
+.dash-share-panel { display: flex; flex-direction: column; gap: 20px; }
+.dash-share-card { background: var(--surface); border: 1px solid rgba(34,197,94,0.18); border-radius: var(--r); padding: 24px; }
+.dash-share-label { font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gray3); margin-bottom: 12px; }
+.dash-share-url-row { display: flex; gap: 8px; align-items: stretch; margin-bottom: 10px; }
+.dash-share-url { flex: 1; padding: 10px 14px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 9px; font-size: 12px; color: rgba(255,255,255,0.55); word-break: break-all; font-family: monospace; line-height: 1.5; }
+.dash-share-hint { font-size: 12px; color: var(--gray3); }
+.dash-share-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+
+/* ── Account role section ───────────────────────────────────────────────── */
+.acc-role-row { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.acc-role-chip { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; padding: 5px 14px; border-radius: 20px; margin-top: 6px; }
+.acc-role-chip--current { background: rgba(224,48,48,0.1); border: 1px solid rgba(224,48,48,0.25); color: var(--red); }
+.acc-role-desc { font-size: 13px; color: var(--gray3); line-height: 1.6; }
+.acc-role-upgrade { margin-top: 4px; }
 
 /* ── CTA SECTION ─────────────────────────────────────────────────────────── */
 .cta-section { padding: 100px 0; background: var(--black2); }

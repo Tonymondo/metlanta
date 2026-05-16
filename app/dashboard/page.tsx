@@ -36,6 +36,8 @@ function DashboardInner() {
   const [createLoading, setCreateLoading] = useState(false)
   const [createDone, setCreateDone] = useState(false)
   const [createError, setCreateError] = useState('')
+  const [createdEventId, setCreatedEventId] = useState('')
+  const [linkCopied, setLinkCopied] = useState(false)
   const [flyerFile, setFlyerFile] = useState<File | null>(null)
   const [flyerPreview, setFlyerPreview] = useState('')
   const [flyerDragOver, setFlyerDragOver] = useState(false)
@@ -96,6 +98,13 @@ function DashboardInner() {
     reader.readAsDataURL(file)
   }
 
+  function copyEventLink(url: string) {
+    navigator.clipboard.writeText(url).then(() => {
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2000)
+    })
+  }
+
   function resetCreateForm() {
     setCreateForm({
       title: '', date: '', time: '', end_time: '', location: '', city: 'Atlanta',
@@ -148,10 +157,10 @@ function DashboardInner() {
         }
       }
 
+      setCreatedEventId(eventId)
       setCreateDone(true)
       resetCreateForm()
       await loadData()
-      setTimeout(() => { setCreateDone(false); setTab('events') }, 1800)
     } catch {
       setCreateError('Something went wrong.')
     } finally {
@@ -317,9 +326,53 @@ function DashboardInner() {
               </div>
 
               {createDone ? (
-                <div className="dash-success-msg">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                  Event created and live! Redirecting…
+                <div className="dash-share-panel">
+                  <div className="dash-success-msg">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    Your event is live!
+                  </div>
+
+                  <div className="dash-share-card">
+                    <p className="dash-share-label">Share your event</p>
+                    <div className="dash-share-url-row">
+                      <div className="dash-share-url">
+                        {typeof window !== 'undefined' ? `${window.location.origin}/events/${createdEventId}` : `/events/${createdEventId}`}
+                      </div>
+                      <button
+                        className="btn-primary"
+                        style={{ flexShrink: 0, padding: '10px 16px', fontSize: 13 }}
+                        onClick={() => copyEventLink(typeof window !== 'undefined' ? `${window.location.origin}/events/${createdEventId}` : '')}
+                      >
+                        {linkCopied ? '✓ Copied!' : 'Copy Link'}
+                      </button>
+                    </div>
+                    <p className="dash-share-hint">Drop this link in your bio, stories, and group chats.</p>
+
+                    <div className="dash-share-card" style={{ marginTop: 16, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)' }}>
+                      <p className="dash-share-label" style={{ marginBottom: 8 }}>Referral link for your crew</p>
+                      <p style={{ fontSize: 12, color: 'var(--gray3)', marginBottom: 10 }}>
+                        Share this with promoters — add <code style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace' }}>?ref=yourname</code> to the end of the event link.
+                      </p>
+                      <div className="dash-share-url" style={{ fontSize: 12 }}>
+                        {typeof window !== 'undefined' ? `${window.location.origin}/events/${createdEventId}?ref=` : ''}<span style={{ color: 'var(--red)' }}>yourname</span>
+                      </div>
+                    </div>
+
+                    <div className="dash-share-actions">
+                      <a href={`/events/${createdEventId}`} className="btn-primary" style={{ fontSize: 13, padding: '10px 18px' }}>
+                        View Event →
+                      </a>
+                      <button
+                        className="dash-ghost-btn"
+                        onClick={() => { setCreateDone(false); setCreatedEventId('') }}
+                      >
+                        Create Another
+                      </button>
+                      <button className="dash-ghost-btn" onClick={() => setTab('events')}>
+                        My Events
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <form className="dash-form" onSubmit={handleCreateEvent}>
@@ -529,13 +582,22 @@ function MiniEventRow({ event, full = false }: { event: DbEvent; full?: boolean 
   return (
     <div className="dash-event-row">
       <div className="dash-event-row-info">
-        <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
           <span className={`dash-status-dot ${event.status}`} />
-          <span className="dash-event-row-title">{event.title}</span>
+          <a href={`/events/${event.id}`} className="dash-event-row-title" style={{ textDecoration: 'none', color: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {event.title}
+          </a>
         </div>
-        <span className="dash-event-row-date">
-          {new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <span className="dash-event-row-date">
+            {new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </span>
+          {full && (
+            <a href={`/events/${event.id}`} className="dash-ghost-btn" style={{ padding: '4px 10px', fontSize: 11 }}>
+              View →
+            </a>
+          )}
+        </div>
       </div>
       {full && (
         <>
@@ -544,7 +606,7 @@ function MiniEventRow({ event, full = false }: { event: DbEvent; full?: boolean 
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--gray3)' }}>
             <span>{totalSold} sold</span>
-            <span>{totalCap > 0 ? `${totalCap} cap` : 'Open'}</span>
+            <span>{totalCap > 0 ? `${totalCap} cap` : 'Open cap'}</span>
           </div>
         </>
       )}
