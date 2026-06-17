@@ -33,6 +33,28 @@ export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions)
     const userId = session?.user?.id ?? null
 
+    // Free ticket — bypass Stripe and confirm immediately
+    if (price === 0) {
+      const db = getServiceClient()
+      await db.from('tickets').insert({
+        event_id: eventId,
+        tier_id: tierId,
+        buyer_email: session?.user?.email ?? '',
+        buyer_name: session?.user?.name ?? '',
+        stripe_session_id: `free_${Date.now()}_${tierId}`,
+        amount_paid: 0,
+        platform_fee: 0,
+        host_payout: 0,
+        status: 'confirmed',
+        ...(userId ? { user_id: userId } : {}),
+      })
+      await db.rpc('increment_sold_count', { tier_id: tierId, qty: quantity })
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+      return NextResponse.json({
+        url: `${appUrl}/success?event=${encodeURIComponent(event.title)}&tier=${encodeURIComponent(tier.name)}`,
+      })
+    }
+
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const unitAmount = Math.round(price * 100) // cents
 
