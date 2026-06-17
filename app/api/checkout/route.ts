@@ -5,113 +5,181 @@ import { getStripe } from '@/lib/stripe'
 import { getServiceClient, getEventById } from '@/lib/supabase'
 import { calculateFee } from '@/lib/fees'
 
+export interface CartTier {
+  tierId: string
+  tierName: string
+  price: number
+  quantity: number
+}
+
+export interface OrderSummary {
+  eventTitle: string
+  eventDate: string
+  eventLocation: string
+  eventImage: string | null
+  tiers: { name: string; qty: number; unitPrice: number; subtotal: number }[]
+  subtotal: number
+  total: number
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { eventId, tierId, tierName, price, quantity = 1 } = await req.json()
+    const body = await req.json()
+    const { eventId, tiers: rawTiers, ref } = body as {
+      eventId: string
+      tiers: CartTier[]
+      ref?: string
+    }
 
-    if (!eventId || !tierId || price === undefined) {
+    if (!eventId || !Array.isArray(rawTiers) || rawTiers.length === 0) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Verify event + tier exist
     const event = await getEventById(eventId)
     if (!event || event.status !== 'live') {
       return NextResponse.json({ error: 'Event not available' }, { status: 404 })
     }
 
-    const tier = event.ticket_tiers?.find((t) => t.id === tierId)
-    if (!tier) {
-      return NextResponse.json({ error: 'Ticket tier not found' }, { status: 404 })
+    // Validate each tier and check availability
+    const validatedTiers: CartTier[] = []
+    for (const ct of rawTiers) {
+      if (!ct.tierId || ct.quantity < 1) continue
+      const tier = event.ticket_tiers?.find((t) => t.id === ct.tierId)
+      if (!tier) return NextResponse.json({ error: `Tier not found: ${ct.tierId}` }, { status: 404 })
+      if (tier.capacity !== null && tier.sold_count + ct.quantity > tier.capacity) {
+        return NextResponse.json({ error: `Not enough tickets for ${tier.name}` }, { status: 409 })
+      }
+      validatedTiers.push({ tierId: tier.id, tierName: tier.name, price: tier.price, quantity: ct.quantity })
     }
 
-    // Check availability
-    if (tier.capacity !== null && tier.sold_count >= tier.capacity) {
-      return NextResponse.json({ error: 'This tier is sold out' }, { status: 409 })
+    if (validatedTiers.length === 0) {
+      return NextResponse.json({ error: 'No valid tickets in cart' }, { status: 400 })
     }
 
-    // Get session for user_id if logged in
     const session = await getServerSession(authOptions)
     const userId = session?.user?.id ?? null
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
-    // Free ticket — bypass Stripe and confirm immediately
-    if (price === 0) {
+    const totalGross = validatedTiers.reduce((s, t) => s + t.price * t.quantity, 0)
+
+    // Free-only cart — bypass Stripe
+    if (totalGross === 0) {
       const db = getServiceClient()
-      await db.from('tickets').insert({
-        event_id: eventId,
-        tier_id: tierId,
-        buyer_email: session?.user?.email ?? '',
-        buyer_name: session?.user?.name ?? '',
-        stripe_session_id: `free_${Date.now()}_${tierId}`,
-        amount_paid: 0,
-        platform_fee: 0,
-        host_payout: 0,
-        status: 'confirmed',
-        ...(userId ? { user_id: userId } : {}),
-      })
-      await db.rpc('increment_sold_count', { tier_id: tierId, qty: quantity })
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+      for (const t of validatedTiers) {
+        for (let i = 0; i < t.quantity; i++) {
+          await db.from('tickets').insert({
+            event_id: eventId,
+            tier_id: t.tierId,
+            buyer_email: session?.user?.email ?? '',
+            buyer_name: session?.user?.name ?? '',
+            stripe_session_id: `free_${Date.now()}_${t.tierId}_${i}`,
+            amount_paid: 0,
+            platform_fee: 0,
+            host_payout: 0,
+            status: 'confirmed',
+            ...(userId ? { user_id: userId } : {}),
+          })
+          await db.rpc('increment_sold_count', { tier_id: t.tierId, qty: 1 })
+        }
+      }
       return NextResponse.json({
-        url: `${appUrl}/success?event=${encodeURIComponent(event.title)}&tier=${encodeURIComponent(tier.name)}`,
+        url: `${appUrl}/success?event=${encodeURIComponent(event.title)}&tier=${encodeURIComponent(validatedTiers[0].tierName)}`,
       })
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    const unitAmount = Math.round(price * 100) // cents
+    const db = getServiceClient()
 
-    // Use tiered fee engine
-    const { fee, payout } = calculateFee(price)
-    const platformFeeCents = Math.round(fee * 100)
+    // Look up host's Stripe Connect account
+    const { data: hostProfile } = await db
+      .from('host_profiles')
+      .select('stripe_account_id')
+      .eq('user_id', event.host_id)
+      .maybeSingle()
+    const hostStripeAccountId = hostProfile?.stripe_account_id ?? null
+
+    // Track promoter click if ref provided
+    if (ref) {
+      await db.from('promoters')
+        .update({ click_count: db.rpc('increment_click_count' as never, {}) as never })
+        .eq('code', ref)
+        .eq('event_id', eventId)
+    }
+
+    const { fee: totalFee } = calculateFee(totalGross)
+    const totalFeeCents = Math.round(totalFee * 100)
+
+    const lineItems = validatedTiers.map((t) => ({
+      price_data: {
+        currency: 'usd' as const,
+        product_data: {
+          name: `${event.title} — ${t.tierName}`,
+          description: `${event.date} · ${event.location}`,
+        },
+        unit_amount: Math.round(t.price * 100),
+      },
+      quantity: t.quantity,
+    }))
+
+    const cartJson = JSON.stringify(
+      validatedTiers.map((t) => ({
+        tierId: t.tierId,
+        tierName: t.tierName,
+        price: t.price,
+        qty: t.quantity,
+      }))
+    )
 
     const stripeSession = await getStripe().checkout.sessions.create({
+      ui_mode: 'embedded',
       payment_method_types: ['card'],
       phone_number_collection: { enabled: true },
-      line_items: [
-        {
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: `${event.title} — ${tierName ?? tier.name}`,
-              description: `${event.date} · ${event.location}`,
-            },
-            unit_amount: unitAmount,
-          },
-          quantity,
-        },
-      ],
+      line_items: lineItems,
       mode: 'payment',
-      success_url: `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}&event=${encodeURIComponent(event.title)}&tier=${encodeURIComponent(tier.name)}`,
-      cancel_url: `${appUrl}/#events`,
+      return_url: `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
       metadata: {
         eventId,
-        tierId,
         eventTitle: event.title,
         eventDate: event.date,
         eventLocation: event.location,
-        tierName: tier.name,
-        platformFee: platformFeeCents.toString(),
-        hostPayout: (unitAmount - platformFeeCents).toString(),
+        cartJson,
+        platformFee: totalFeeCents.toString(),
+        hostPayout: (Math.round(totalGross * 100) - totalFeeCents).toString(),
         ...(userId ? { userId } : {}),
+        ...(ref ? { ref } : {}),
       },
-      payment_intent_data: {
-        description: `Metlanta — ${event.title} (${tier.name})`,
-      },
+      ...(hostStripeAccountId
+        ? {
+            payment_intent_data: {
+              application_fee_amount: totalFeeCents,
+              transfer_data: { destination: hostStripeAccountId },
+            },
+          }
+        : {
+            payment_intent_data: {
+              description: `Metlanta — ${event.title}`,
+            },
+          }),
     })
 
-    // Save pending ticket to DB
-    const db = getServiceClient()
-    await db.from('tickets').insert({
-      event_id: eventId,
-      tier_id: tierId,
-      buyer_email: '',        // filled in by webhook once payment is confirmed
-      stripe_session_id: stripeSession.id,
-      amount_paid: price * quantity,
-      platform_fee: fee * quantity,
-      host_payout: payout * quantity,
-      status: 'pending',
-      ...(userId ? { user_id: userId } : {}),
-    })
+    const orderSummary: OrderSummary = {
+      eventTitle: event.title,
+      eventDate: event.date,
+      eventLocation: event.location,
+      eventImage: event.flyer_url ?? event.image_url ?? null,
+      tiers: validatedTiers.map((t) => ({
+        name: t.tierName,
+        qty: t.quantity,
+        unitPrice: t.price,
+        subtotal: t.price * t.quantity,
+      })),
+      subtotal: totalGross,
+      total: totalGross,
+    }
 
-    return NextResponse.json({ url: stripeSession.url })
+    return NextResponse.json({
+      clientSecret: stripeSession.client_secret,
+      orderSummary,
+    })
   } catch (err: unknown) {
     console.error('Stripe checkout error:', err)
     const message = err instanceof Error ? err.message : 'Internal server error'

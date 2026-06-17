@@ -6,6 +6,7 @@ import Logo from './Logo'
 
 const NAV_LINKS = [
   { label: 'Explore Events', href: '#events' },
+  { label: 'Marketplace', href: '/marketplace' },
   { label: 'Hosts', href: '#host' },
   { label: 'Pricing', href: '#pricing' },
 ]
