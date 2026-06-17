@@ -99,10 +99,7 @@ export async function POST(req: NextRequest) {
 
     // Track promoter click if ref provided
     if (ref) {
-      await db.from('promoters')
-        .update({ click_count: db.rpc('increment_click_count' as never, {}) as never })
-        .eq('code', ref)
-        .eq('event_id', eventId)
+      await db.rpc('increment_promoter_clicks', { p_code: ref, p_event_id: eventId })
     }
 
     const { fee: totalFee } = calculateFee(totalGross)
@@ -130,12 +127,12 @@ export async function POST(req: NextRequest) {
     )
 
     const stripeSession = await getStripe().checkout.sessions.create({
-      ui_mode: 'embedded',
       payment_method_types: ['card'],
       phone_number_collection: { enabled: true },
       line_items: lineItems,
       mode: 'payment',
-      return_url: `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appUrl}/events/${eventId}`,
       metadata: {
         eventId,
         eventTitle: event.title,
@@ -177,7 +174,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({
-      clientSecret: stripeSession.client_secret,
+      url: stripeSession.url,
       orderSummary,
     })
   } catch (err: unknown) {
