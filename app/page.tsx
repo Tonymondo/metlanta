@@ -188,7 +188,7 @@ function Hero() {
       <div className="hero-content">
         <p className="hero-eyebrow">
           <span className="eyebrow-dot" />
-          Atlanta&apos;s Social Event Marketplace
+          World&apos;s First Social Event Marketplace
         </p>
         <h1 className="hero-title">METLANTA</h1>
         <p className="hero-sub">
@@ -325,7 +325,7 @@ function EventsSection() {
       <div className="wrap">
         <div className="section-hd reveal">
           <p className="eyebrow-label">Discover</p>
-          <h2 className="section-title">Happening in Atlanta</h2>
+          <h2 className="section-title">Events Near You</h2>
         </div>
 
         {loading ? (
