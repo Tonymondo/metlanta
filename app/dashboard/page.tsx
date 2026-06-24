@@ -36,8 +36,13 @@ function DashboardInner() {
   const [createLoading, setCreateLoading] = useState(false)
   const [createDone, setCreateDone] = useState(false)
   const [createError, setCreateError] = useState('')
+  const [createdEventId, setCreatedEventId] = useState('')
+  const [linkCopied, setLinkCopied] = useState(false)
+  const [flyerFile, setFlyerFile] = useState<File | null>(null)
+  const [flyerPreview, setFlyerPreview] = useState('')
+  const [flyerDragOver, setFlyerDragOver] = useState(false)
 
-  const isHost = session?.user?.role === 'host' || session?.user?.role === 'admin'
+  const isHost = session?.user?.role === 'host' || session?.user?.role === 'promoter' || session?.user?.role === 'admin'
 
   const loadData = useCallback(async () => {
     if (!session?.user?.id || !isHost) { setLoading(false); return }
@@ -83,12 +88,40 @@ function DashboardInner() {
     setHostLoading(false)
   }
 
+  function handleFlyerSelect(file: File) {
+    if (!file.type.startsWith('image/')) { setCreateError('Flyer must be an image file.'); return }
+    if (file.size > 5 * 1024 * 1024) { setCreateError('Flyer image must be under 5MB.'); return }
+    setCreateError('')
+    setFlyerFile(file)
+    const reader = new FileReader()
+    reader.onload = (ev) => setFlyerPreview(ev.target?.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  function copyEventLink(url: string) {
+    navigator.clipboard.writeText(url).then(() => {
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2000)
+    })
+  }
+
+  function resetCreateForm() {
+    setCreateForm({
+      title: '', date: '', time: '', end_time: '', location: '', city: 'Atlanta',
+      capacity: '', description: '', event_type: '', age_policy: '',
+      tiers: [{ name: 'General', price: '' }, { name: '', price: '' }],
+    })
+    setFlyerFile(null)
+    setFlyerPreview('')
+  }
+
   // Create event
   async function handleCreateEvent(e: React.FormEvent) {
     e.preventDefault()
     setCreateLoading(true)
     setCreateError('')
     try {
+      // Step 1: create event
       const res = await fetch('/api/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -103,9 +136,31 @@ function DashboardInner() {
       })
       const data = await res.json()
       if (!res.ok) { setCreateError(data.error ?? 'Failed to create event'); return }
+
+      const eventId = data.event.id
+
+      // Step 2: upload flyer if selected
+      if (flyerFile && eventId) {
+        const fd = new FormData()
+        fd.append('file', flyerFile)
+        fd.append('bucket', 'event-flyers')
+        fd.append('ref_id', eventId)
+        const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd })
+        if (uploadRes.ok) {
+          const { url } = await uploadRes.json()
+          // Step 3: attach flyer URL to event
+          await fetch(`/api/events/${eventId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ flyer_url: url }),
+          })
+        }
+      }
+
+      setCreatedEventId(eventId)
       setCreateDone(true)
+      resetCreateForm()
       await loadData()
-      setTimeout(() => { setCreateDone(false); setTab('events') }, 1800)
     } catch {
       setCreateError('Something went wrong.')
     } finally {
@@ -150,9 +205,9 @@ function DashboardInner() {
               ? <Image src={session.user.image} alt="" width={32} height={32} className="dash-avatar" />
               : <div className="dash-avatar-fallback">{session?.user?.name?.[0] ?? '?'}</div>
             }
-            <div>
-              <p className="dash-uname">{session?.user?.name ?? 'User'}</p>
-              <p className="dash-urole">{session?.user?.role ?? 'attendee'}</p>
+            <div style={{ minWidth: 0 }}>
+              <p className="dash-uname" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session?.user?.name ?? 'User'}</p>
+              <span className="dash-role-badge">{session?.user?.role ?? 'attendee'}</span>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
@@ -271,9 +326,53 @@ function DashboardInner() {
               </div>
 
               {createDone ? (
-                <div className="dash-success-msg">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                  Event created and live! Redirecting…
+                <div className="dash-share-panel">
+                  <div className="dash-success-msg">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    Your event is live!
+                  </div>
+
+                  <div className="dash-share-card">
+                    <p className="dash-share-label">Share your event</p>
+                    <div className="dash-share-url-row">
+                      <div className="dash-share-url">
+                        {typeof window !== 'undefined' ? `${window.location.origin}/events/${createdEventId}` : `/events/${createdEventId}`}
+                      </div>
+                      <button
+                        className="btn-primary"
+                        style={{ flexShrink: 0, padding: '10px 16px', fontSize: 13 }}
+                        onClick={() => copyEventLink(typeof window !== 'undefined' ? `${window.location.origin}/events/${createdEventId}` : '')}
+                      >
+                        {linkCopied ? '✓ Copied!' : 'Copy Link'}
+                      </button>
+                    </div>
+                    <p className="dash-share-hint">Drop this link in your bio, stories, and group chats.</p>
+
+                    <div className="dash-share-card" style={{ marginTop: 16, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)' }}>
+                      <p className="dash-share-label" style={{ marginBottom: 8 }}>Referral link for your crew</p>
+                      <p style={{ fontSize: 12, color: 'var(--gray3)', marginBottom: 10 }}>
+                        Share this with promoters — add <code style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace' }}>?ref=yourname</code> to the end of the event link.
+                      </p>
+                      <div className="dash-share-url" style={{ fontSize: 12 }}>
+                        {typeof window !== 'undefined' ? `${window.location.origin}/events/${createdEventId}?ref=` : ''}<span style={{ color: 'var(--red)' }}>yourname</span>
+                      </div>
+                    </div>
+
+                    <div className="dash-share-actions">
+                      <a href={`/events/${createdEventId}`} className="btn-primary" style={{ fontSize: 13, padding: '10px 18px' }}>
+                        View Event →
+                      </a>
+                      <button
+                        className="dash-ghost-btn"
+                        onClick={() => { setCreateDone(false); setCreatedEventId('') }}
+                      >
+                        Create Another
+                      </button>
+                      <button className="dash-ghost-btn" onClick={() => setTab('events')}>
+                        My Events
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <form className="dash-form" onSubmit={handleCreateEvent}>
@@ -325,6 +424,53 @@ function DashboardInner() {
                         <textarea value={createForm.description} onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })} placeholder="Tell people what to expect…" rows={3} />
                       </div>
                     </div>
+                  </fieldset>
+
+                  <fieldset className="dash-fieldset">
+                    <legend>Event Flyer</legend>
+                    <p className="dash-fieldset-note">Upload a flyer or cover image. JPG, PNG, WebP · Max 5MB.</p>
+                    {flyerPreview ? (
+                      <div className="flyer-preview">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={flyerPreview} alt="Flyer preview" className="flyer-preview-img" />
+                        <button
+                          type="button"
+                          className="flyer-preview-remove"
+                          onClick={() => { setFlyerFile(null); setFlyerPreview('') }}
+                          aria-label="Remove flyer"
+                        >
+                          ×
+                        </button>
+                        <p className="flyer-preview-label">{flyerFile?.name}</p>
+                      </div>
+                    ) : (
+                      <div
+                        className={`flyer-upload-zone${flyerDragOver ? ' drag-over' : ''}`}
+                        onDragOver={(ev) => { ev.preventDefault(); setFlyerDragOver(true) }}
+                        onDragLeave={() => setFlyerDragOver(false)}
+                        onDrop={(ev) => {
+                          ev.preventDefault()
+                          setFlyerDragOver(false)
+                          const f = ev.dataTransfer.files[0]
+                          if (f) handleFlyerSelect(f)
+                        }}
+                      >
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(ev) => { const f = ev.target.files?.[0]; if (f) handleFlyerSelect(f) }}
+                        />
+                        <div className="flyer-upload-icon">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--gray)' }}>
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                            <circle cx="8.5" cy="8.5" r="1.5" />
+                            <polyline points="21 15 16 10 5 21" />
+                          </svg>
+                        </div>
+                        <p className="flyer-upload-text">Drop your flyer here or tap to browse</p>
+                        <p className="flyer-upload-sub">JPG, PNG, WebP · Max 5MB</p>
+                      </div>
+                    )}
                   </fieldset>
 
                   <fieldset className="dash-fieldset">
@@ -436,13 +582,22 @@ function MiniEventRow({ event, full = false }: { event: DbEvent; full?: boolean 
   return (
     <div className="dash-event-row">
       <div className="dash-event-row-info">
-        <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
           <span className={`dash-status-dot ${event.status}`} />
-          <span className="dash-event-row-title">{event.title}</span>
+          <a href={`/events/${event.id}`} className="dash-event-row-title" style={{ textDecoration: 'none', color: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {event.title}
+          </a>
         </div>
-        <span className="dash-event-row-date">
-          {new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <span className="dash-event-row-date">
+            {new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </span>
+          {full && (
+            <a href={`/events/${event.id}`} className="dash-ghost-btn" style={{ padding: '4px 10px', fontSize: 11 }}>
+              View →
+            </a>
+          )}
+        </div>
       </div>
       {full && (
         <>
@@ -451,7 +606,7 @@ function MiniEventRow({ event, full = false }: { event: DbEvent; full?: boolean 
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--gray3)' }}>
             <span>{totalSold} sold</span>
-            <span>{totalCap > 0 ? `${totalCap} cap` : 'Open'}</span>
+            <span>{totalCap > 0 ? `${totalCap} cap` : 'Open cap'}</span>
           </div>
         </>
       )}

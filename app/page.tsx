@@ -411,24 +411,50 @@ function HostSection() {
 
 function HowSection() {
   const steps = [
-    { n: '01', title: 'Create your event', body: 'Set date, location, and ticket tiers. Upload a flyer. Go live in under 5 minutes.' },
-    { n: '02', title: 'Share one link', body: 'Post it in your bio, stories, and group chats. Watch ticket sales roll in.' },
-    { n: '03', title: 'Get paid', body: 'Stripe handles every payment. 85% goes directly to you. Same-night payout.' },
+    {
+      n: '01', emoji: '⚡',
+      title: 'Create your event',
+      body: 'Set your date, location, and ticket tiers. Upload a flyer and go live in under 5 minutes.',
+      bullets: ['Multiple ticket tiers & pricing', 'Upload event flyer or banner', 'No approval wait — instant publish'],
+    },
+    {
+      n: '02', emoji: '🔗',
+      title: 'Share everywhere',
+      body: 'One link does everything. Drop it in your bio, stories, and group chats.',
+      bullets: ['Your own shareable event page', 'Referral links for your crew', 'Post in stories, DMs, everywhere'],
+    },
+    {
+      n: '03', emoji: '💰',
+      title: 'Sell out. Get paid.',
+      body: 'Watch sales roll in live. 85% of every ticket goes straight to you via Stripe.',
+      bullets: ['Live ticket sales dashboard', 'QR code guest check-in at door', 'Same-night Stripe payouts'],
+    },
   ]
 
   return (
     <section className="how-section">
       <div className="wrap">
-        <div className="section-hd reveal" style={{ textAlign: 'center' }}>
+        <div className="section-hd reveal" style={{ textAlign: 'center', marginBottom: 56 }}>
           <p className="eyebrow-label">How It Works</p>
-          <h2 className="section-title">Three steps to sold out.</h2>
+          <h2 className="section-title">From idea to sold out<br />in three steps.</h2>
         </div>
-        <div className="how-grid">
+        <div className="how-steps">
           {steps.map((s, i) => (
-            <div key={s.n} className={`how-card reveal d${i + 1}`}>
-              <span className="how-num">{s.n}</span>
-              <h3 className="how-title">{s.title}</h3>
-              <p className="how-body">{s.body}</p>
+            <div key={s.n} className={`how-step reveal d${i + 1}`}>
+              <div className="how-step-top">
+                <span className="how-step-num">{s.n}</span>
+                <span className="how-step-emoji" aria-hidden>{s.emoji}</span>
+              </div>
+              <h3 className="how-step-title">{s.title}</h3>
+              <p className="how-step-body">{s.body}</p>
+              <ul className="how-step-list">
+                {s.bullets.map(b => (
+                  <li key={b}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    {b}
+                  </li>
+                ))}
+              </ul>
             </div>
           ))}
         </div>
