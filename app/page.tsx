@@ -185,22 +185,27 @@ function Hero() {
       <div className="hero-glow hero-glow-1" aria-hidden />
       <div className="hero-glow hero-glow-2" aria-hidden />
       <div className="hero-noise" aria-hidden />
+      <div className="hero-scrim" aria-hidden />
       <div className="hero-content">
-        <p className="hero-eyebrow">
-          <span className="eyebrow-dot" />
-          World&apos;s First Social Event Marketplace
-        </p>
-        <h1 className="hero-title">METLANTA</h1>
+        {/* Default headline: "Let the night find you."
+            Alternates (swap in if needed):
+              - "Every great night starts here."
+              - "Find your night."
+            Supporting-line alternate:
+              "Discover what's moving in your city, grab tickets in seconds, and host your own." */}
+        <h1 className="hero-headline">
+          Let the night <em className="hero-headline-accent">find you.</em>
+        </h1>
         <p className="hero-sub">
-          After proms. Day parties. Kickbacks. Nightlife.<br className="hero-br" />
-          Discover events or host your own — all in one place.
+          The events worth pulling up to — tickets in seconds, hosted by the city.
+          Built for nights you&apos;ll actually remember.
         </p>
         <div className="hero-actions">
-          <a href="#events" className="btn-primary">
-            Explore Events
+          <a href="/explore" className="btn-primary">
+            Find your night
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </a>
-          <a href="/login" className="btn-ghost">Start Hosting</a>
+          <a href="/login" className="btn-ghost">Host an event</a>
         </div>
       </div>
       <div className="hero-scroll" aria-hidden>

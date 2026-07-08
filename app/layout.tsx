@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Outfit, Bebas_Neue } from 'next/font/google'
+import { Outfit, Bebas_Neue, Instrument_Serif } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import './globals.css'
@@ -17,6 +17,14 @@ const bebas = Bebas_Neue({
   weight: '400',
   subsets: ['latin'],
   variable: '--font-bebas',
+  display: 'swap',
+})
+
+const instrumentSerif = Instrument_Serif({
+  weight: '400',
+  style: ['italic'],
+  subsets: ['latin'],
+  variable: '--font-serif',
   display: 'swap',
 })
 
@@ -54,7 +62,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${outfit.variable} ${bebas.variable}`}>
+    <html lang="en" className={`${outfit.variable} ${bebas.variable} ${instrumentSerif.variable}`}>
       <body style={{ margin: 0, background: '#0A0A0A', color: '#fff' }}>
         <Providers>{children}</Providers>
         <Analytics />
