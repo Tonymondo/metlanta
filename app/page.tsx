@@ -2,8 +2,13 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import Image from 'next/image'
+import dynamic from 'next/dynamic'
 import { useSession, signOut } from 'next-auth/react'
 import type { DbEvent, DbTicketTier } from '@/lib/supabase'
+import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from '@/components/ui/avatar'
+
+const GlobeScene = dynamic(() => import('./components/GlobeScene'), { ssr: false })
+const SplineHero = dynamic(() => import('./components/SplineHero'), { ssr: false })
 
 /* ── Checkout ─────────────────────────────────────────────────────────────── */
 
@@ -82,16 +87,26 @@ function Navbar() {
           <a href="/" className="nav-brand">
             <img src="/metlantalogo.png" alt="Metlanta" className="nav-logo-img" />
           </a>
+          <nav className="nav-links">
+            <a href="#events" className="nav-link">Discover</a>
+            <a href="#how" className="nav-link">How It Works</a>
+            <a href="/explore" className="nav-link">Explore</a>
+          </nav>
           <div className="nav-right">
-            {!session && (
+            {!session ? (
               <>
                 <a href="/login" className="nav-login-link">Log in</a>
                 <a href="/login" className="nav-cta">Get Started</a>
               </>
+            ) : (
+              <a href="/dashboard" className="nav-cta">Dashboard</a>
             )}
             <button className="nav-menu-btn" onClick={() => setDrawerOpen(true)} aria-label="Menu">
               {session?.user?.image ? (
-                <Image src={session.user.image} alt="" width={28} height={28} className="nav-avatar" />
+                <Avatar className="h-7 w-7">
+                  <AvatarImage src={session.user.image} alt={session.user.name ?? ''} />
+                  <AvatarFallback>{session.user.name?.[0] ?? 'M'}</AvatarFallback>
+                </Avatar>
               ) : (
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="3" y1="7" x2="21" y2="7"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="17" x2="21" y2="17"/>
@@ -102,48 +117,49 @@ function Navbar() {
         </div>
       </header>
 
-      {/* Drawer overlay */}
       <div className={`drawer-overlay${drawerOpen ? ' open' : ''}`} onClick={close} />
-
-      {/* Side drawer */}
       <div className={`drawer${drawerOpen ? ' open' : ''}`}>
         <div className="drawer-top">
           {session ? (
             <div className="drawer-user">
-              {session.user?.image
-                ? <Image src={session.user.image} alt="" width={38} height={38} className="drawer-avatar" />
-                : <div className="drawer-avatar-fallback">{session.user?.name?.[0] ?? 'M'}</div>
-              }
+              <Avatar className="h-[38px] w-[38px] shrink-0">
+                <AvatarImage src={session.user?.image ?? ''} alt={session.user?.name ?? ''} />
+                <AvatarFallback>{session.user?.name?.[0] ?? 'M'}</AvatarFallback>
+                <AvatarBadge />
+              </Avatar>
               <div style={{ minWidth: 0 }}>
                 <p className="drawer-user-name">{session.user?.name ?? 'User'}</p>
                 <p className="drawer-user-email">{session.user?.email}</p>
               </div>
             </div>
           ) : (
-            <img src="/metlantalogo.png" alt="Metlanta" className="drawer-logo-img" />
+            <a href="/" onClick={close}><img src="/metlantalogo.png" alt="Metlanta" className="drawer-logo-img" /></a>
           )}
           <button className="drawer-close" onClick={close} aria-label="Close">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
-
         <nav className="drawer-nav">
           <a href="/#events" className="drawer-link" onClick={close}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             Find Events
+          </a>
+          <a href="/explore" className="drawer-link" onClick={close}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+            Explore
           </a>
           {session && <>
             <a href="/tickets" className="drawer-link" onClick={close}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2z"/></svg>
               My Tickets
             </a>
+            <a href="/dashboard" className="drawer-link" onClick={close}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+              Dashboard
+            </a>
             <a href="/account" className="drawer-link" onClick={close}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               Account
-            </a>
-            <a href="/dashboard" className="drawer-link" onClick={close}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-              Host Dashboard
             </a>
           </>}
           <div className="drawer-divider" />
@@ -170,7 +186,7 @@ function Navbar() {
           )}
         </nav>
         <div className="drawer-bottom">
-          <p className="drawer-version">Metlanta · Atlanta, GA</p>
+          <p className="drawer-version">Metlanta · Live experiences, everywhere.</p>
         </div>
       </div>
     </>
@@ -180,8 +196,15 @@ function Navbar() {
 /* ── Hero ─────────────────────────────────────────────────────────────────── */
 
 function Hero() {
+  const { data: session } = useSession()
+
   return (
     <section className="hero">
+      <div className="hero-spline hero-spline-ready" aria-hidden>
+        <SplineHero />
+      </div>
+      <div className="hero-overlay" aria-hidden />
+      <div className="hero-fade-bottom" aria-hidden />
       <div className="hero-glow hero-glow-1" aria-hidden />
       <div className="hero-glow hero-glow-2" aria-hidden />
       <div className="hero-noise" aria-hidden />
@@ -208,6 +231,7 @@ function Hero() {
           <a href="/login" className="btn-ghost">Host an event</a>
         </div>
       </div>
+
       <div className="hero-scroll" aria-hidden>
         <div className="hero-scroll-line" />
       </div>
@@ -257,6 +281,7 @@ function EventCard({ event }: { event: DbEvent }) {
         {event.event_type && (
           <span className="event-type-badge">{event.event_type.replace(/_/g, ' ')}</span>
         )}
+        {soldPct > 75 && <span className="event-hot-badge">🔥 Selling Fast</span>}
       </a>
 
       <div className="event-body">
@@ -301,9 +326,7 @@ function EventCard({ event }: { event: DbEvent }) {
             onClick={handleBuy}
             disabled={!available || loading}
           >
-            {loading ? (
-              <span className="btn-spinner" />
-            ) : !available ? 'Sold Out' : isFree ? 'RSVP Free' : 'Get Tickets'}
+            {loading ? <span className="btn-spinner" /> : !available ? 'Sold Out' : isFree ? 'RSVP Free' : 'Get Tickets'}
           </button>
         </div>
       </div>
@@ -344,8 +367,8 @@ function EventsSection() {
                 <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
               </svg>
             </div>
-            <p className="empty-title">No events live in Atlanta yet.</p>
-            <p className="empty-sub">Be the first to host something.</p>
+            <p className="empty-title">No events live yet.</p>
+            <p className="empty-sub">Be the first to host something in your city.</p>
             <a href="/login" className="btn-primary" style={{ marginTop: 24 }}>Create an Event</a>
           </div>
         ) : (
@@ -362,13 +385,156 @@ function EventsSection() {
   )
 }
 
+/* ── How It Works ─────────────────────────────────────────────────────────── */
+
+function HowSection() {
+  const steps = [
+    {
+      n: '01',
+      title: 'Create your event',
+      body: 'Build a professional event page in under 5 minutes. Set ticket tiers, upload your flyer, and configure your Stripe payout.',
+      items: [
+        'Upload event flyer or banner',
+        'Set multiple ticket tiers (Free, GA, VIP)',
+        'Configure venue, date & capacity',
+        'Connect Stripe to receive payouts',
+      ],
+    },
+    {
+      n: '02',
+      title: 'Share everywhere',
+      body: 'Your event gets its own shareable link. Post it anywhere — Instagram, TikTok, Twitter, group chats — and recruit promoters.',
+      items: [
+        'Unique shareable event link',
+        'Share directly to Instagram & TikTok',
+        'Invite promoters with referral links',
+        'Track clicks and conversions in real time',
+      ],
+    },
+    {
+      n: '03',
+      title: 'Sell out. Get paid.',
+      body: 'Watch ticket sales roll in from your dashboard. Check guests in with QR codes. Stripe deposits land directly in your account.',
+      items: [
+        'Live ticket sales dashboard',
+        'QR code guest check-in app',
+        'Real-time revenue & analytics',
+        'Stripe payout straight to your bank',
+      ],
+    },
+  ]
+
+  return (
+    <section className="how-section" id="how">
+      <div className="wrap">
+        <div className="section-hd reveal" style={{ textAlign: 'center' }}>
+          <p className="eyebrow-label">How It Works</p>
+          <h2 className="section-title">From idea to sold out<br />in three steps.</h2>
+        </div>
+        <div className="how-grid">
+          {steps.map((s, i) => (
+            <div key={s.n} className={`how-card reveal d${i + 1}`}>
+              <span className="how-num">{s.n}</span>
+              <h3 className="how-title">{s.title}</h3>
+              <p className="how-body">{s.body}</p>
+              <ul className="how-items">
+                {s.items.map(item => (
+                  <li key={item}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ── Roles section ────────────────────────────────────────────────────────── */
+
+function RolesSection() {
+  const roles = [
+    {
+      id: 'attendee',
+      label: 'Attendee',
+      tagline: 'Discover experiences near you.',
+      color: '#5B8CF5',
+      glow: 'rgba(91,140,245,0.25)',
+      href: '/login',
+      cta: 'Start Discovering',
+      features: ['Browse events by city & vibe', 'Buy tickets in seconds', 'Follow hosts you love', 'Share events with friends'],
+    },
+    {
+      id: 'host',
+      label: 'Host',
+      tagline: 'Create events. Sell tickets. Get paid.',
+      color: '#E03030',
+      glow: 'rgba(224,48,48,0.25)',
+      href: '/login?callbackUrl=/host/onboarding',
+      cta: 'Start Hosting Free',
+      features: ['Publish your event in minutes', 'Sell tickets via Stripe', 'Manage your full guest list', 'Real-time sales analytics'],
+    },
+    {
+      id: 'promoter',
+      label: 'Promoter',
+      tagline: 'Grow events. Build influence.',
+      color: '#4ECDC4',
+      glow: 'rgba(78,205,196,0.25)',
+      href: '/login',
+      cta: 'Become a Promoter',
+      features: ['Get unique referral links', 'Share to any platform', 'Track your conversions', 'Earn on every ticket sold'],
+    },
+  ]
+
+  return (
+    <section className="roles-section">
+      <div className="wrap">
+        <div className="section-hd reveal" style={{ textAlign: 'center' }}>
+          <p className="eyebrow-label">Join the Ecosystem</p>
+          <h2 className="section-title">Find your role<br />in the culture.</h2>
+        </div>
+        <div className="roles-grid">
+          {roles.map((role, i) => (
+            <div
+              key={role.id}
+              className={`role-card reveal d${i + 1}`}
+              style={{ '--rc': role.color, '--rg': role.glow } as React.CSSProperties}
+            >
+              <div className="role-card-accent" />
+              <div className="role-card-head">
+                <span className="role-card-title">{role.label}</span>
+                <p className="role-card-tagline">{role.tagline}</p>
+              </div>
+              <ul className="role-card-list">
+                {role.features.map(f => (
+                  <li key={f}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <a href={role.href} className="role-card-cta">
+                {role.cta}
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </a>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 /* ── Host section ─────────────────────────────────────────────────────────── */
 
 function HostSection() {
   const features = [
-    { icon: '⚡', title: 'Go live in minutes', body: 'Set your event details, upload a flyer, set ticket prices. You\'re live.' },
-    { icon: '💳', title: 'Get paid instantly', body: 'Stripe powers every transaction. 85% goes to you. Same-night payouts.' },
-    { icon: '📊', title: 'Real-time dashboard', body: 'Track ticket sales, check in guests, manage your event from anywhere.' },
+    { icon: '⚡', title: 'Live in minutes', body: 'Set your event details, upload a flyer, set ticket prices. You\'re live.' },
+    { icon: '💳', title: 'Stripe-powered payouts', body: 'Every transaction runs through Stripe. Funds go directly to your connected account.' },
+    { icon: '📊', title: 'Real-time dashboard', body: 'Track ticket sales, manage your guest list, and check in attendees from anywhere.' },
   ]
 
   return (
@@ -378,7 +544,7 @@ function HostSection() {
           <div className="host-left reveal">
             <p className="eyebrow-label">For Hosts</p>
             <h2 className="section-title">Your event.<br />Your money.</h2>
-            <p className="host-sub">Metlanta handles the ticketing, you keep 85%. No monthly fees, no upfront cost.</p>
+            <p className="host-sub">Metlanta handles the ticketing infrastructure. You keep the majority of every sale with low, transparent fees.</p>
             <div className="host-features">
               {features.map(f => (
                 <div key={f.title} className="host-feature">
@@ -390,7 +556,7 @@ function HostSection() {
                 </div>
               ))}
             </div>
-            <a href="/login" className="btn-primary" style={{ marginTop: 8 }}>
+            <a href="/login?callbackUrl=/host/onboarding" className="btn-primary" style={{ marginTop: 8 }}>
               Start Hosting — Free
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </a>
@@ -398,44 +564,17 @@ function HostSection() {
 
           <div className="host-right reveal d2">
             <div className="calc-card">
-              <p className="calc-label">Example payout</p>
-              <div className="calc-row"><span>Ticket price</span><strong>$20</strong></div>
-              <div className="calc-row"><span>Tickets sold</span><strong><AnimCounter target={800} /></strong></div>
-              <div className="calc-row"><span>Gross revenue</span><strong>$<AnimCounter target={16000} /></strong></div>
-              <div className="calc-row muted"><span>Metlanta fee (15%)</span><span className="red-text">−$<AnimCounter target={2400} /></span></div>
-              <div className="calc-payout"><span>You take home</span><span className="payout-val">$<AnimCounter target={13600} /></span></div>
+              <p className="calc-label">Example payout — $20 ticket</p>
+              <div className="calc-row"><span>Ticket price</span><strong>$20.00</strong></div>
+              <div className="calc-row"><span>Tickets sold</span><strong><AnimCounter target={400} /></strong></div>
+              <div className="calc-row"><span>Gross revenue</span><strong>$<AnimCounter target={8000} /></strong></div>
+              <div className="calc-row muted"><span>Platform fee (22%)</span><span className="red-text">−$<AnimCounter target={1760} /></span></div>
+              <div className="calc-payout"><span>You take home</span><span className="payout-val">$<AnimCounter target={6240} /></span></div>
+              <p style={{ fontSize: 11, color: 'var(--gray3)', marginTop: 14, lineHeight: 1.6 }}>
+                Fee drops to 15% on tickets $100+. Always transparent, no monthly fees.
+              </p>
             </div>
           </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-/* ── How it works ─────────────────────────────────────────────────────────── */
-
-function HowSection() {
-  const steps = [
-    { n: '01', title: 'Create your event', body: 'Set date, location, and ticket tiers. Upload a flyer. Go live in under 5 minutes.' },
-    { n: '02', title: 'Share one link', body: 'Post it in your bio, stories, and group chats. Watch ticket sales roll in.' },
-    { n: '03', title: 'Get paid', body: 'Stripe handles every payment. 85% goes directly to you. Same-night payout.' },
-  ]
-
-  return (
-    <section className="how-section">
-      <div className="wrap">
-        <div className="section-hd reveal" style={{ textAlign: 'center' }}>
-          <p className="eyebrow-label">How It Works</p>
-          <h2 className="section-title">Three steps to sold out.</h2>
-        </div>
-        <div className="how-grid">
-          {steps.map((s, i) => (
-            <div key={s.n} className={`how-card reveal d${i + 1}`}>
-              <span className="how-num">{s.n}</span>
-              <h3 className="how-title">{s.title}</h3>
-              <p className="how-body">{s.body}</p>
-            </div>
-          ))}
         </div>
       </div>
     </section>
@@ -447,10 +586,16 @@ function HowSection() {
 function CTASection() {
   return (
     <section className="cta-section">
+      <div className="cta-globe" aria-hidden>
+        <GlobeScene />
+      </div>
+      <div className="cta-globe-fade-top" aria-hidden />
+      <div className="cta-globe-fade-bottom" aria-hidden />
       <div className="wrap">
         <div className="cta-inner reveal">
+          <p className="eyebrow-label" style={{ marginBottom: 16 }}>Ready to go live?</p>
           <h2 className="cta-title">Your first event<br />starts tonight.</h2>
-          <p className="cta-sub">No experience. No upfront cost. Free to list.</p>
+          <p className="cta-sub">No experience needed. No upfront cost. Free to list.</p>
           <div className="cta-actions">
             <a href="/login" className="btn-primary">Create Your Event — Free</a>
             <a href="#events" className="btn-ghost">Explore Events</a>
@@ -469,19 +614,33 @@ function Footer() {
       <div className="wrap">
         <div className="footer-inner">
           <div className="footer-brand">
-            <img src="/metlantalogo.png" alt="Metlanta" className="footer-logo-img" />
-            <p className="footer-tag">Atlanta&apos;s social event marketplace.</p>
+            <a href="/"><img src="/metlantalogo.png" alt="Metlanta" className="footer-logo-img" /></a>
+            <p className="footer-tag">The social marketplace for live experiences.</p>
+            <p className="footer-city">Launching in Atlanta · Expanding nationwide</p>
           </div>
-          <div className="footer-links">
-            <a href="#events">Explore Events</a>
-            <a href="/login">Host an Event</a>
-            <a href="/help">Help</a>
-            <a href="mailto:support@metlanta.app">Contact</a>
+          <div className="footer-cols">
+            <div className="footer-col">
+              <p className="footer-col-head">Discover</p>
+              <a href="#events">Browse Events</a>
+              <a href="/explore">Explore</a>
+              <a href="/login">Sign Up</a>
+            </div>
+            <div className="footer-col">
+              <p className="footer-col-head">Host</p>
+              <a href="/login">Create Event</a>
+              <a href="/dashboard">Dashboard</a>
+              <a href="/help">Help Center</a>
+            </div>
+            <div className="footer-col">
+              <p className="footer-col-head">Company</p>
+              <a href="mailto:support@metlanta.app">Contact</a>
+              <a href="/help">FAQ</a>
+            </div>
           </div>
         </div>
         <div className="footer-bottom">
-          <p>© 2026 Metlanta, Inc. · Built in Atlanta, GA</p>
-          <p>15% platform fee on paid tickets · Free to list</p>
+          <p>© 2026 Metlanta, Inc. — Social Event Marketplace</p>
+          <p>Platform fee: 15–22% on paid tickets · Free to list · Free to browse</p>
         </div>
       </div>
     </footer>
@@ -497,8 +656,9 @@ export default function Page() {
       <Navbar />
       <Hero />
       <EventsSection />
-      <HostSection />
       <HowSection />
+      <RolesSection />
+      <HostSection />
       <CTASection />
       <Footer />
     </>
