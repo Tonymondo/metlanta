@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server'
-import Stripe from 'stripe'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getServiceClient } from '@/lib/supabase'
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2026-04-22.dahlia' })
+import { getStripe } from '@/lib/stripe'
 
 export async function GET() {
   try {
@@ -24,6 +22,7 @@ export async function GET() {
 
     const acctId = profile.stripe_account_id
 
+    const stripe = getStripe()
     const [account, balance, payouts] = await Promise.all([
       stripe.accounts.retrieve(acctId),
       stripe.balance.retrieve({}, { stripeAccount: acctId }),

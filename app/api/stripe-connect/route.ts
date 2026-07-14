@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Stripe from 'stripe'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getServiceClient } from '@/lib/supabase'
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2026-04-22.dahlia' })
+import { getStripe } from '@/lib/stripe'
 
 // POST — create Connect account + onboarding link
 export async function POST(req: NextRequest) {
@@ -36,7 +34,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!accountId) {
-      const account = await stripe.accounts.create({
+      const account = await getStripe().accounts.create({
         type: 'express',
         email: session.user.email,
         capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
@@ -61,7 +59,7 @@ export async function POST(req: NextRequest) {
     const refreshPath = body.refresh_url ?? '/dashboard?stripe=refresh'
     const origin = (process.env.NEXTAUTH_URL ?? 'https://www.metlanta.app').replace(/\/$/, '')
 
-    const accountLink = await stripe.accountLinks.create({
+    const accountLink = await getStripe().accountLinks.create({
       account: accountId,
       refresh_url: `${origin}${refreshPath}`,
       return_url:  `${origin}${returnPath}`,
@@ -104,7 +102,7 @@ export async function GET(_req: NextRequest) {
 
     if (!stripeAccountId) return NextResponse.json({ connected: false, status: 'none' })
 
-    const account = await stripe.accounts.retrieve(stripeAccountId)
+    const account = await getStripe().accounts.retrieve(stripeAccountId)
     const fullyOnboarded = account.charges_enabled && account.payouts_enabled
 
     return NextResponse.json({
