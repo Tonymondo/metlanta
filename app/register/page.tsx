@@ -2,27 +2,27 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { signIn, useSession } from 'next-auth/react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { Suspense } from 'react'
 
 type Tab = 'email' | 'phone'
 type PhoneStep = 'enter' | 'verify'
 
-function LoginInner() {
+function RegisterInner() {
   const { status } = useSession()
   const router = useRouter()
-  const params = useSearchParams()
-  const callbackUrl = params.get('callbackUrl') ?? '/'
 
   const [tab, setTab] = useState<Tab>('email')
   const [phoneStep, setPhoneStep] = useState<PhoneStep>('enter')
 
   // Email form
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
   const [emailLoading, setEmailLoading] = useState(false)
   const [emailError, setEmailError] = useState('')
+  const [googleLoading, setGoogleLoading] = useState(false)
 
   // Phone form
   const [phone, setPhone] = useState('')
@@ -32,12 +32,9 @@ function LoginInner() {
   const [resendCountdown, setResendCountdown] = useState(0)
   const otpRefs = useRef<(HTMLInputElement | null)[]>([])
 
-  // Google
-  const [googleLoading, setGoogleLoading] = useState(false)
-
   useEffect(() => {
-    if (status === 'authenticated') router.push(callbackUrl)
-  }, [status, router, callbackUrl])
+    if (status === 'authenticated') router.push('/')
+  }, [status, router])
 
   useEffect(() => {
     if (resendCountdown <= 0) return
@@ -45,16 +42,24 @@ function LoginInner() {
     return () => clearTimeout(t)
   }, [resendCountdown])
 
-  async function handleEmailLogin(e: React.FormEvent) {
+  async function handleEmailRegister(e: React.FormEvent) {
     e.preventDefault()
     setEmailError(''); setEmailLoading(true)
-    const res = await signIn('email-password', { email, password, redirect: false, callbackUrl })
-    setEmailLoading(false)
-    if (res?.error) {
-      setEmailError('Invalid email or password.')
-    } else if (res?.ok) {
-      router.push(callbackUrl)
-    }
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setEmailError(data.error ?? 'Registration failed'); return }
+
+      // Auto sign in after register
+      const signInRes = await signIn('email-password', { email, password, redirect: false })
+      if (signInRes?.ok) router.push('/onboarding')
+      else setEmailError('Account created. Please log in.')
+    } catch { setEmailError('Network error. Please try again.') }
+    finally { setEmailLoading(false) }
   }
 
   async function handleSendOTP(e: React.FormEvent) {
@@ -80,41 +85,33 @@ function LoginInner() {
     const code = otp.join('')
     if (code.length < 6) { setPhoneError('Enter the 6-digit code.'); return }
     setPhoneError(''); setPhoneLoading(true)
-    const res = await signIn('phone-otp', { phone, otp: code, redirect: false, callbackUrl })
+    const res = await signIn('phone-otp', { phone, otp: code, redirect: false })
     setPhoneLoading(false)
     if (res?.error) {
       setPhoneError('Invalid or expired code.')
       setOtp(['', '', '', '', '', ''])
       otpRefs.current[0]?.focus()
     } else if (res?.ok) {
-      router.push(callbackUrl)
+      router.push('/onboarding')
     }
   }
 
   function handleOtpChange(val: string, idx: number) {
     if (!/^\d*$/.test(val)) return
-    const next = [...otp]
-    next[idx] = val.slice(-1)
-    setOtp(next)
+    const next = [...otp]; next[idx] = val.slice(-1); setOtp(next)
     if (val && idx < 5) otpRefs.current[idx + 1]?.focus()
   }
-
   function handleOtpKey(e: React.KeyboardEvent, idx: number) {
     if (e.key === 'Backspace' && !otp[idx] && idx > 0) otpRefs.current[idx - 1]?.focus()
   }
-
   function handleOtpPaste(e: React.ClipboardEvent) {
     e.preventDefault()
     const digits = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
-    const next = [...otp]
-    digits.split('').forEach((d, i) => { next[i] = d })
-    setOtp(next)
+    const next = [...otp]; digits.split('').forEach((d, i) => { next[i] = d }); setOtp(next)
     otpRefs.current[Math.min(digits.length, 5)]?.focus()
   }
 
-  if (status === 'loading') return (
-    <div className="auth-page"><div className="dash-spinner" /></div>
-  )
+  if (status === 'loading') return <div className="auth-page"><div className="dash-spinner" /></div>
 
   return (
     <div className="auth-page">
@@ -130,7 +127,6 @@ function LoginInner() {
         </nav>
       </header>
 
-      {/* Card */}
       <div className="auth-center">
         {/* Tab toggle */}
         <div className="auth-tabs">
@@ -141,35 +137,31 @@ function LoginInner() {
         <div className="auth-card">
           {/* ── EMAIL TAB ── */}
           {tab === 'email' && (
-            <form onSubmit={handleEmailLogin}>
-              <h2 className="auth-card-title">Email</h2>
-              <p className="auth-card-sub">Log In with Email.</p>
+            <form onSubmit={handleEmailRegister}>
+              <h2 className="auth-card-title">Register</h2>
+              <p className="auth-card-sub">Create your account.</p>
 
               <div className="auth-field">
-                <label>Email</label>
-                <input
-                  type="email"
-                  placeholder="johndoe@gmail.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                />
+                <label>Name</label>
+                <input type="text" placeholder="John Doe" value={name} onChange={e => setName(e.target.value)} autoComplete="name" />
               </div>
 
               <div className="auth-field">
-                <div className="auth-field-row">
-                  <label>Password</label>
-                  <a href="#" className="auth-forgot">Forgot Password?</a>
-                </div>
+                <label>Email</label>
+                <input type="email" placeholder="johndoe@gmail.com" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" />
+              </div>
+
+              <div className="auth-field">
+                <label>Password</label>
                 <div className="auth-pass-wrap">
                   <input
                     type={showPass ? 'text' : 'password'}
-                    placeholder="••••••••••"
+                    placeholder="Min. 8 characters"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     required
-                    autoComplete="current-password"
+                    minLength={8}
+                    autoComplete="new-password"
                   />
                   <button type="button" className="auth-pass-toggle" onClick={() => setShowPass(v => !v)} tabIndex={-1}>
                     {showPass
@@ -183,7 +175,7 @@ function LoginInner() {
               {emailError && <p className="auth-error">{emailError}</p>}
 
               <button type="submit" className="auth-submit" disabled={emailLoading}>
-                {emailLoading ? <span className="btn-spinner" /> : 'Login'}
+                {emailLoading ? <span className="btn-spinner" /> : 'Create Account'}
               </button>
 
               <div className="auth-divider"><span>or</span></div>
@@ -191,7 +183,7 @@ function LoginInner() {
               <button
                 type="button"
                 className="auth-google-btn"
-                onClick={() => { setGoogleLoading(true); signIn('google', { callbackUrl }) }}
+                onClick={() => { setGoogleLoading(true); signIn('google', { callbackUrl: '/onboarding' }) }}
                 disabled={googleLoading}
               >
                 {googleLoading ? <span className="btn-spinner" style={{ borderColor: 'rgba(0,0,0,0.2)', borderTopColor: '#333' }} /> : (
@@ -200,7 +192,7 @@ function LoginInner() {
                 Continue with Google
               </button>
 
-              <p className="auth-switch">Don&apos;t have an account? <a href="/register">Register</a></p>
+              <p className="auth-switch">Already have an account? <a href="/login">Login</a></p>
             </form>
           )}
 
@@ -208,7 +200,7 @@ function LoginInner() {
           {tab === 'phone' && phoneStep === 'enter' && (
             <form onSubmit={handleSendOTP}>
               <h2 className="auth-card-title">Phone</h2>
-              <p className="auth-card-sub">Log In with Phone.</p>
+              <p className="auth-card-sub">Register with your phone number.</p>
 
               <div className="auth-field">
                 <label>Phone Number</label>
@@ -217,25 +209,17 @@ function LoginInner() {
                     <span>🇺🇸</span>
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                   </div>
-                  <input
-                    type="tel"
-                    placeholder="Enter a phone number"
-                    value={phone}
-                    onChange={e => setPhone(e.target.value)}
-                    required
-                    autoComplete="tel"
-                    className="auth-phone-input"
-                  />
+                  <input type="tel" placeholder="Enter a phone number" value={phone} onChange={e => setPhone(e.target.value)} required autoComplete="tel" className="auth-phone-input" />
                 </div>
               </div>
 
               {phoneError && <p className="auth-error">{phoneError}</p>}
 
               <button type="submit" className="auth-submit" disabled={phoneLoading}>
-                {phoneLoading ? <span className="btn-spinner" /> : 'Login'}
+                {phoneLoading ? <span className="btn-spinner" /> : 'Send Code'}
               </button>
 
-              <p className="auth-switch">Don&apos;t have an account? <a href="/register">Register</a></p>
+              <p className="auth-switch">Already have an account? <a href="/login">Login</a></p>
             </form>
           )}
 
@@ -248,14 +232,8 @@ function LoginInner() {
                 <label>Verification Code</label>
                 <div className="auth-otp-row">
                   {otp.map((digit, i) => (
-                    <input
-                      key={i}
-                      ref={el => { otpRefs.current[i] = el }}
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={1}
-                      className="auth-otp-box"
-                      value={digit}
+                    <input key={i} ref={el => { otpRefs.current[i] = el }} type="text" inputMode="numeric" maxLength={1}
+                      className="auth-otp-box" value={digit}
                       onChange={e => handleOtpChange(e.target.value, i)}
                       onKeyDown={e => handleOtpKey(e, i)}
                       onPaste={i === 0 ? handleOtpPaste : undefined}
@@ -267,20 +245,15 @@ function LoginInner() {
               {phoneError && <p className="auth-error">{phoneError}</p>}
 
               <button type="submit" className="auth-submit" disabled={phoneLoading || otp.join('').length < 6}>
-                {phoneLoading ? <span className="btn-spinner" /> : 'Verify'}
+                {phoneLoading ? <span className="btn-spinner" /> : 'Verify & Create Account'}
               </button>
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
-                <button
-                  type="button"
-                  className="auth-text-btn"
-                  onClick={() => setPhoneStep('enter')}
-                >← Change number</button>
-                {resendCountdown > 0 ? (
-                  <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)' }}>Resend in {resendCountdown}s</span>
-                ) : (
-                  <button type="button" className="auth-text-btn" onClick={handleSendOTP}>Resend code</button>
-                )}
+                <button type="button" className="auth-text-btn" onClick={() => setPhoneStep('enter')}>← Change number</button>
+                {resendCountdown > 0
+                  ? <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)' }}>Resend in {resendCountdown}s</span>
+                  : <button type="button" className="auth-text-btn" onClick={handleSendOTP}>Resend code</button>
+                }
               </div>
             </form>
           )}
@@ -290,6 +263,6 @@ function LoginInner() {
   )
 }
 
-export default function LoginPage() {
-  return <Suspense><LoginInner /></Suspense>
+export default function RegisterPage() {
+  return <Suspense><RegisterInner /></Suspense>
 }
