@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@radix-ui/react-avatar": "^1.2.2",
     "@splinetool/react-spline": "^4.1.0",
     "@stripe/stripe-js": "^9.5.0",
     "@supabase/ssr": "^0.10.3",
@@ -23,6 +24,7 @@
     "react": "^18",
     "react-dom": "^18",
     "stripe": "^22.1.1",
+    "tailwind-merge": "^3.6.0",
     "twilio": "^6.0.2"
   },
   "devDependencies": {
