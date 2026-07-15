@@ -566,7 +566,7 @@ function HostOnboardingInner() {
             </div>
 
             <div className="ho-launch-actions">
-              <a href="/dashboard?tab=create" className="ho-launch-cta primary">Create Event</a>
+              <a href="/dashboard/events" className="ho-launch-cta primary">Create Event</a>
               <a href="/dashboard" className="ho-launch-cta secondary">Open Dashboard</a>
               {createdEventId && (
                 <a href={`/events/${createdEventId}`} className="ho-launch-cta ghost">
