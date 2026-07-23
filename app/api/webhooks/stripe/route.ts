@@ -5,6 +5,13 @@ import { sendTicketConfirmationSMS } from '@/lib/sms'
 import { calculateFee } from '@/lib/fees'
 import Stripe from 'stripe'
 
+interface CartItem {
+  tierId: string
+  tierName: string
+  price: number
+  qty: number
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.text()
   const sig = req.headers.get('stripe-signature')
@@ -30,40 +37,59 @@ export async function POST(req: NextRequest) {
 
     const phone = session.customer_details?.phone ?? null
     const amountTotal = session.amount_total ? session.amount_total / 100 : 0
+    const { fee: totalFee } = calculateFee(amountTotal)
 
-    // Recalculate fee using tiered engine for accuracy
-    const { fee, payout } = calculateFee(amountTotal)
-
-    // Confirm ticket + update sold_count
-    const { data: ticket } = await db
-      .from('tickets')
-      .update({
-        status: 'confirmed',
-        buyer_email: session.customer_details?.email ?? '',
-        buyer_name: session.customer_details?.name ?? '',
-        stripe_payment_intent: session.payment_intent as string,
-        phone_number: phone,
-        platform_fee: fee,
-        host_payout: payout,
-      })
-      .eq('stripe_session_id', session.id)
-      .select()
-      .single()
-
-    // Increment sold_count on the tier
-    if (ticket?.tier_id) {
-      await db.rpc('increment_sold_count', { tier_id: ticket.tier_id, qty: 1 })
+    // Parse cart items from metadata
+    let cartItems: CartItem[] = []
+    try {
+      cartItems = JSON.parse(meta.cartJson ?? '[]')
+    } catch {
+      console.error('Failed to parse cartJson:', meta.cartJson)
     }
 
-    // Send SMS confirmation
-    if (phone) {
+    const totalGross = cartItems.reduce((s, t) => s + t.price * t.qty, 0)
+
+    let firstTicketId = ''
+
+    for (const item of cartItems) {
+      // Proportionally split fee across line items
+      const itemGross = item.price * item.qty
+      const itemFeeTotal = totalGross > 0 ? (itemGross / totalGross) * totalFee : 0
+      const feePerTicket = item.qty > 0 ? itemFeeTotal / item.qty : 0
+      const payoutPerTicket = item.price - feePerTicket
+
+      for (let i = 0; i < item.qty; i++) {
+        const { data: ticket } = await db.from('tickets').insert({
+          event_id: meta.eventId,
+          tier_id: item.tierId,
+          buyer_email: session.customer_details?.email ?? '',
+          buyer_name: session.customer_details?.name ?? '',
+          stripe_session_id: session.id,
+          stripe_payment_intent: session.payment_intent as string,
+          amount_paid: item.price,
+          platform_fee: feePerTicket,
+          host_payout: payoutPerTicket,
+          status: 'confirmed',
+          phone_number: phone,
+          ...(meta.userId ? { user_id: meta.userId } : {}),
+        }).select('id').single()
+
+        if (ticket?.id && !firstTicketId) firstTicketId = ticket.id
+
+        // Increment sold count per ticket
+        await db.rpc('increment_sold_count', { tier_id: item.tierId, qty: 1 })
+      }
+    }
+
+    // Send SMS confirmation for first ticket
+    if (phone && cartItems.length > 0) {
       await sendTicketConfirmationSMS({
         to: phone,
         eventTitle: meta.eventTitle ?? 'your event',
         eventDate: meta.eventDate ?? '',
         eventLocation: meta.eventLocation ?? '',
-        tierName: meta.tierName ?? 'General',
-        ticketId: ticket?.id ?? '',
+        tierName: cartItems[0].tierName ?? 'General',
+        ticketId: firstTicketId,
       })
     }
   }

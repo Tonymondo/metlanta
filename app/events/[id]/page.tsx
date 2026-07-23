@@ -213,7 +213,10 @@ export default function EventPage() {
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId: id, tierId: tier.id, tierName: tier.name, price: tier.price }),
+        body: JSON.stringify({
+          eventId: id,
+          tiers: [{ tierId: tier.id, tierName: tier.name, price: tier.price, quantity: 1 }],
+        }),
       })
       const data = await res.json()
       if (data.url) window.location.href = data.url

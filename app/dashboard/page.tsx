@@ -22,19 +22,23 @@ function OverviewInner() {
   const [stats, setStats] = useState({ totalRevenue: 0, totalTickets: 0, liveEvents: 0 })
   const [metric, setMetric] = useState<typeof METRICS[number]>('Revenue')
   const [chartType, setChartType] = useState<typeof CHART_TYPES[number]>('Bar')
+  const [stripeConnected, setStripeConnected] = useState<boolean | null>(null)
   const isHost = session?.user?.role === 'host' || session?.user?.role === 'admin'
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return }
     if (isHost) {
       fetch('/api/dashboard/stats').then(r => r.ok ? r.json() : null).then(d => { if (d) setStats(d) })
+      fetch('/api/stripe-connect').then(r => r.ok ? r.json() : null).then(d => {
+        if (d) setStripeConnected(d.connected ?? false)
+      })
     }
   }, [status, isHost, router])
 
   return (
     <>
-      {/* Host setup banner */}
-      {isHost && (
+      {/* Host setup banner — only when Stripe not yet connected */}
+      {isHost && stripeConnected === false && (
         <div className="mpd-banner">
           <div>
             <p className="mpd-banner-title">Connect Stripe to start receiving payouts</p>

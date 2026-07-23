@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
       phone_number_collection: { enabled: true },
       line_items: lineItems,
       mode: 'payment',
-      success_url: `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}&event=${encodeURIComponent(event.title)}&tier=${encodeURIComponent(validatedTiers[0].tierName)}`,
       cancel_url: `${appUrl}/events/${eventId}`,
       metadata: {
         eventId,

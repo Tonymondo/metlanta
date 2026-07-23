@@ -1,21 +1,117 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+
+interface PayoutRecord {
+  id: string
+  amount: number
+  status: string
+  arrival_date: string
+  currency: string
+}
+
+interface PayoutsData {
+  connected: boolean
+  balance: { available: number; pending: number; currency: string } | null
+  totalEarned: number
+  totalPaidOut: number
+  payouts: PayoutRecord[]
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  paid: '#22c55e',
+  pending: '#f59e0b',
+  in_transit: '#3b82f6',
+  canceled: '#6b7280',
+  failed: '#ef4444',
+}
 
 export default function AccountPage() {
+  const router = useRouter()
   const [transferType, setTransferType] = useState<'standard' | 'instant'>('standard')
-  const [amount, setAmount] = useState('100.00')
-  const [historyTab, setHistoryTab] = useState<'adjustments' | 'payouts'>('adjustments')
-  const [payouts, setPayouts] = useState<{ available: number; pending: number; total: number; paid: number }>({ available: 0, pending: 0, total: 0, paid: 0 })
+  const [amount, setAmount] = useState('')
+  const [historyTab, setHistoryTab] = useState<'payouts'>('payouts')
+  const [data, setData] = useState<PayoutsData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [transferring, setTransferring] = useState(false)
+  const [transferError, setTransferError] = useState<string | null>(null)
+  const [transferSuccess, setTransferSuccess] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/payouts')
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setPayouts(d) })
+      .then(d => { if (d) setData(d) })
       .catch(() => {})
+      .finally(() => setLoading(false))
   }, [])
 
-  const fmt = (n: number) => `$${n.toFixed(2)}`
+  const fmt = (n: number) => `$${(n ?? 0).toFixed(2)}`
+  const available = data?.balance?.available ?? 0
+  const pending = data?.balance?.pending ?? 0
+  const totalEarned = data?.totalEarned ?? 0
+  const totalPaidOut = data?.totalPaidOut ?? 0
+
+  async function handleTransfer() {
+    const amt = parseFloat(amount)
+    if (!amt || amt <= 0) { setTransferError('Enter a valid amount.'); return }
+    if (amt > available) { setTransferError('Amount exceeds available balance.'); return }
+
+    setTransferring(true)
+    setTransferError(null)
+    setTransferSuccess(null)
+
+    try {
+      const res = await fetch('/api/payouts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: amt, method: transferType }),
+      })
+      const result = await res.json()
+      if (!res.ok) {
+        setTransferError(result.error ?? 'Transfer failed. Try again.')
+      } else {
+        setTransferSuccess(`Transfer of ${fmt(result.amount)} initiated! Arrives ${result.arrival_date}.`)
+        setAmount('')
+        // Refresh data
+        fetch('/api/payouts').then(r => r.ok ? r.json() : null).then(d => { if (d) setData(d) })
+      }
+    } catch {
+      setTransferError('Network error. Check your connection and try again.')
+    }
+    setTransferring(false)
+  }
+
+  if (loading) {
+    return (
+      <div className="mpd-spinner-wrap" style={{ minHeight: 300 }}>
+        <div className="dash-spinner" />
+      </div>
+    )
+  }
+
+  if (!data?.connected) {
+    return (
+      <>
+        <div className="mpd-breadcrumb">
+          <a href="/dashboard">Dashboard</a>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <span>Account Balance</span>
+        </div>
+
+        <div className="mpd-empty-state" style={{ paddingTop: 60 }}>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 20 }}>
+            <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+          </svg>
+          <p className="mpd-empty-title" style={{ marginBottom: 8 }}>Connect Stripe to unlock payouts</p>
+          <p className="mpd-empty-sub" style={{ marginBottom: 24 }}>Link your bank account to receive payments from ticket sales directly.</p>
+          <button className="mpd-primary-btn" onClick={() => router.push('/host/onboarding')}>
+            Connect Stripe →
+          </button>
+        </div>
+      </>
+    )
+  }
 
   return (
     <>
@@ -25,31 +121,22 @@ export default function AccountPage() {
         <span>Account Balance</span>
       </div>
 
-      {/* Info notices */}
-      <div className="mpd-info-box" style={{ marginBottom: 12 }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        <div>
-          <p style={{ fontWeight: 700, marginBottom: 2 }}>Monetization review required</p>
-          <p>Set up Stripe from the dashboard overview to request monetization review. Reviews take 1–2 business days.</p>
-        </div>
-      </div>
       <div className="mpd-info-box" style={{ marginBottom: 24 }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <div>
           <p style={{ fontWeight: 700, marginBottom: 4 }}>Payout Options</p>
-          <p><strong>Manual Instant Transfers:</strong> 5% fee, funds arrive in ~30 minutes.</p>
-          <p><strong>Automatic Daily Transfers:</strong> NO fee, standard timing (2–5 business days).</p>
-          <a href="/help" className="mpd-info-link">Learn more about account balance &amp; payouts →</a>
+          <p><strong>Standard:</strong> No fee — arrives in 2–5 business days.</p>
+          <p><strong>Instant:</strong> 5% fee — arrives in ~30 minutes.</p>
         </div>
       </div>
 
       {/* Balance cards */}
       <div className="mpd-kpi-grid" style={{ marginBottom: 28 }}>
         {[
-          { label: 'Available Balance', val: fmt(payouts.available), note: 'Ready to withdraw' },
-          { label: 'Pending Balance', val: fmt(payouts.pending), note: 'Processing payments' },
-          { label: 'Total Earned', val: fmt(payouts.total), note: 'Lifetime earnings' },
-          { label: 'Total Paid Out', val: fmt(payouts.paid), note: 'Total withdrawals' },
+          { label: 'Available Balance', val: fmt(available), note: 'Ready to withdraw' },
+          { label: 'Pending Balance', val: fmt(pending), note: 'Processing payments' },
+          { label: 'Total Earned', val: fmt(totalEarned), note: 'Lifetime earnings' },
+          { label: 'Total Paid Out', val: fmt(totalPaidOut), note: 'Total withdrawn' },
         ].map(c => (
           <div key={c.label} className="mpd-kpi">
             <div className="mpd-kpi-hd"><span>{c.label}</span></div>
@@ -61,27 +148,13 @@ export default function AccountPage() {
 
       {/* Two-col layout */}
       <div className="mpd-two-col">
-        {/* Left: Automatic Payouts + Manual Transfer */}
+        {/* Left: Transfer widget */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="mpd-card">
-            <h3 className="mpd-card-title">Automatic Payouts</h3>
-            <p className="mpd-card-sub">Daily standard transfers when balance is available (NO fee, 2–5 days)</p>
-            <div className="mpd-auto-row">
-              <div>
-                <p style={{ fontWeight: 700, fontSize: 14 }}>Disabled</p>
-                <p style={{ fontSize: 12, color: 'var(--gray3)' }}>Enable automatic daily payouts</p>
-              </div>
-              <button className="mpd-ghost-btn">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
-                Configure
-              </button>
-            </div>
-          </div>
+            <h3 className="mpd-card-title">Request a Payout</h3>
+            <p className="mpd-card-sub">Transfer funds from your Metlanta balance to your linked bank account.</p>
 
-          <div className="mpd-card">
-            <h3 className="mpd-card-title">Manual Transfer</h3>
-            <p className="mpd-card-sub">Request a one-time payout to your bank account</p>
-            <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, marginTop: 16 }}>Transfer Type</p>
+            <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, marginTop: 20 }}>Transfer Type</p>
             <div className="mpd-transfer-grid">
               {([
                 { type: 'standard' as const, icon: '💳', label: 'Standard', fee: 'No fee', eta: '2–5 days' },
@@ -99,33 +172,98 @@ export default function AccountPage() {
                 </button>
               ))}
             </div>
-            <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, marginTop: 16 }}>Amount to Transfer</p>
+
+            <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, marginTop: 20 }}>Amount</p>
             <div className="mpd-amount-row">
               <div className="mpd-amount-input-wrap">
                 <span style={{ color: 'var(--gray3)', fontSize: 14 }}>$</span>
-                <input className="mpd-amount-input" type="number" min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} />
+                <input
+                  className="mpd-amount-input"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={amount}
+                  placeholder="0.00"
+                  onChange={e => setAmount(e.target.value)}
+                />
               </div>
-              <button className="mpd-ghost-btn" onClick={() => setAmount(payouts.available.toFixed(2))}>Max</button>
+              <button className="mpd-ghost-btn" onClick={() => setAmount(available.toFixed(2))}>Max</button>
             </div>
-            <button className="mpd-primary-btn" style={{ width: '100%', justifyContent: 'center', marginTop: 16 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/></svg>
-              Request {transferType === 'standard' ? 'Standard' : 'Instant'} Transfer
+
+            {transferType === 'instant' && parseFloat(amount) > 0 && (
+              <p style={{ fontSize: 12, color: 'var(--gray3)', marginTop: 8 }}>
+                5% fee: {fmt(parseFloat(amount) * 0.05)} · You receive: {fmt(parseFloat(amount) * 0.95)}
+              </p>
+            )}
+
+            {transferError && (
+              <div style={{ fontSize: 13, color: '#ef4444', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '10px 14px', marginTop: 12 }}>
+                {transferError}
+              </div>
+            )}
+            {transferSuccess && (
+              <div style={{ fontSize: 13, color: '#22c55e', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 8, padding: '10px 14px', marginTop: 12 }}>
+                {transferSuccess}
+              </div>
+            )}
+
+            <button
+              className="mpd-primary-btn"
+              style={{ width: '100%', justifyContent: 'center', marginTop: 16 }}
+              onClick={handleTransfer}
+              disabled={transferring || available === 0}
+            >
+              {transferring ? <span className="btn-spinner" /> : (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/></svg>
+                  Request {transferType === 'standard' ? 'Standard' : 'Instant'} Payout
+                </>
+              )}
             </button>
-            <a href="/help" className="mpd-info-link" style={{ display: 'block', marginTop: 12, textAlign: 'center' }}>Learn more about payout options</a>
+            {available === 0 && (
+              <p style={{ fontSize: 12, color: 'var(--gray3)', textAlign: 'center', marginTop: 8 }}>No available balance to withdraw.</p>
+            )}
           </div>
         </div>
 
-        {/* Right: Transaction History */}
+        {/* Right: Payout History */}
         <div className="mpd-card" style={{ minHeight: 300 }}>
-          <h3 className="mpd-card-title">Transaction History</h3>
-          <p className="mpd-card-sub" style={{ marginBottom: 16 }}>View all balance adjustments and payout records</p>
-          <div className="mpd-tabs" style={{ marginBottom: 20 }}>
-            <button className={`mpd-tab${historyTab === 'adjustments' ? ' active' : ''}`} onClick={() => setHistoryTab('adjustments')} style={{ flex: 1, justifyContent: 'center' }}>Adjustments</button>
-            <button className={`mpd-tab${historyTab === 'payouts' ? ' active' : ''}`} onClick={() => setHistoryTab('payouts')} style={{ flex: 1, justifyContent: 'center' }}>Payouts</button>
-          </div>
-          <p style={{ textAlign: 'center', color: 'var(--gray3)', fontSize: 13, paddingTop: 24 }}>
-            {historyTab === 'adjustments' ? 'No adjustments yet' : 'No payouts yet'}
-          </p>
+          <h3 className="mpd-card-title">Payout History</h3>
+          <p className="mpd-card-sub" style={{ marginBottom: 16 }}>Your recent payout records</p>
+
+          {data.payouts.length === 0 ? (
+            <p style={{ textAlign: 'center', color: 'var(--gray3)', fontSize: 13, paddingTop: 24 }}>
+              No payouts yet
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {data.payouts.map(p => (
+                <div key={p.id} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.06)',
+                  fontSize: 13,
+                }}>
+                  <div>
+                    <p style={{ fontWeight: 600, color: '#fff', marginBottom: 2 }}>
+                      {fmt(p.amount)}
+                    </p>
+                    <p style={{ color: 'var(--gray3)', fontSize: 12 }}>
+                      {new Date(p.arrival_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </div>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, letterSpacing: '0.04em',
+                    textTransform: 'uppercase', color: STATUS_COLORS[p.status] ?? 'var(--gray3)',
+                    background: `${STATUS_COLORS[p.status] ?? '#6b7280'}18`,
+                    border: `1px solid ${STATUS_COLORS[p.status] ?? '#6b7280'}30`,
+                    borderRadius: 6, padding: '3px 8px',
+                  }}>
+                    {p.status.replace(/_/g, ' ')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </>

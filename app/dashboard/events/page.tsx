@@ -14,6 +14,7 @@ export default function EventsPage() {
   const [createLoading, setCreateLoading] = useState(false)
   const [createDone, setCreateDone] = useState(false)
   const [createError, setCreateError] = useState('')
+  const [stripeConnected, setStripeConnected] = useState<boolean | null>(null)
   const [form, setForm] = useState({
     title: '', date: '', time: '', end_time: '', location: '', city: 'Atlanta',
     capacity: '', description: '', event_type: '', age_policy: '',
@@ -27,7 +28,12 @@ export default function EventsPage() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { loadEvents() }, [loadEvents])
+  useEffect(() => {
+    loadEvents()
+    fetch('/api/stripe-connect').then(r => r.ok ? r.json() : null).then(d => {
+      if (d) setStripeConnected(d.connected ?? false)
+    })
+  }, [loadEvents])
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -55,13 +61,15 @@ export default function EventsPage() {
 
   return (
     <>
-      <div className="mpd-banner">
-        <div>
-          <p className="mpd-banner-title">Complete your Stripe setup</p>
-          <p className="mpd-banner-sub">Connect Stripe to start accepting payments for your events.</p>
+      {stripeConnected === false && (
+        <div className="mpd-banner">
+          <div>
+            <p className="mpd-banner-title">Complete your Stripe setup</p>
+            <p className="mpd-banner-sub">Connect Stripe to start accepting payments for your events.</p>
+          </div>
+          <a href="/dashboard/settings" className="mpd-banner-btn">Set up Stripe</a>
         </div>
-        <a href="/dashboard/settings" className="mpd-banner-btn">Set up Stripe</a>
-      </div>
+      )}
 
       <div className="mpd-breadcrumb">
         <a href="/dashboard">Dashboard</a>
