@@ -77,8 +77,8 @@ img { display: block; max-width: 100%; }
 @keyframes skeletonPulse { 0%,100%{opacity:.35} 50%{opacity:.6} }
 
 /* ── NAV ─────────────────────────────────────────────────────────────────── */
-.nav { position: fixed; top: 0; left: 0; right: 0; z-index: 200; background: rgba(5,5,5,0.88); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.3s, border-color 0.3s; }
-.nav.scrolled { background: rgba(5,5,5,0.97); border-bottom-color: var(--border); }
+.nav { position: fixed; top: 0; left: 0; right: 0; z-index: 200; background: rgba(5,5,5,0.55); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.3s, border-color 0.3s; }
+.nav.scrolled { background: rgba(5,5,5,0.92); border-bottom-color: rgba(255,255,255,0.07); }
 .nav-inner { max-width: var(--max-w); margin: 0 auto; padding: 0 24px; height: 58px; display: flex; align-items: center; justify-content: space-between; }
 @media (max-width: 480px) { .nav-inner { padding: 0 16px; height: 52px; } }
 .nav-brand { text-decoration: none; display: flex; align-items: center; transition: opacity 0.15s; }
