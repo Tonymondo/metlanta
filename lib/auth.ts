@@ -70,7 +70,9 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.phone || !credentials?.otp) return null
         try {
           const db = getServiceClient()
-          const phone = credentials.phone.replace(/\D/g, '')
+          const raw = credentials.phone.replace(/\D/g, '')
+          // Normalize to match how send-otp stores the phone (always with leading "1")
+          const phone = raw.startsWith('1') ? raw : `1${raw}`
 
           // Verify OTP
           const { data: record } = await db
