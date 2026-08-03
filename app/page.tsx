@@ -210,7 +210,7 @@ function Hero({ events }: { events: DbEvent[] }) {
         </h1>
 
         {/* Subline + CTAs */}
-        <p style={{ fontSize: 17, color: 'rgba(255,255,255,0.5)', maxWidth: 420, lineHeight: 1.65, marginBottom: 28 }}>
+        <p style={{ fontSize: 'clamp(15px, 2vw, 18px)', color: 'rgba(255,255,255,0.5)', maxWidth: 480, lineHeight: 1.7, marginBottom: 24 }}>
           Find the events worth showing up for, grab tickets in seconds, and host your own — on the platform built for Atlanta nights.
         </p>
 
