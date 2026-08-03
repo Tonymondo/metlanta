@@ -1,22 +1,21 @@
 import type { Metadata, Viewport } from 'next'
-import { Outfit, Bebas_Neue, Instrument_Serif } from 'next/font/google'
+import { Anton, Inter, Instrument_Serif } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import './globals.css'
 import './landing.css'
 import { Providers } from './providers'
 
-const outfit = Outfit({
-  subsets: ['latin'],
-  variable: '--font-outfit',
-  display: 'swap',
-  weight: ['300', '400', '500', '600', '700', '800'],
-})
-
-const bebas = Bebas_Neue({
+const anton = Anton({
   weight: '400',
   subsets: ['latin'],
-  variable: '--font-bebas',
+  variable: '--font-anton',
+  display: 'swap',
+})
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
   display: 'swap',
 })
 
@@ -45,10 +44,12 @@ export const metadata: Metadata = {
     siteName: 'Metlanta',
     title: 'Metlanta — Atlanta\'s Social Event Marketplace',
     description: 'Discover or host Atlanta\'s hottest events. Stripe-powered tickets. Same-night payouts.',
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'Metlanta — Every great night starts on Metlanta' }],
   },
   twitter: {
     card: 'summary_large_image',
     creator: '@metlanta',
+    images: ['/opengraph-image'],
   },
   icons: {
     icon: [
@@ -68,7 +69,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${outfit.variable} ${bebas.variable} ${instrumentSerif.variable}`}>
+    <html lang="en" className={`${anton.variable} ${inter.variable} ${instrumentSerif.variable}`}>
       <body style={{ margin: 0, background: '#0A0A0A', color: '#fff' }}>
         <Providers>{children}</Providers>
         <Analytics />

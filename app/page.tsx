@@ -204,7 +204,7 @@ function Hero({ events }: { events: DbEvent[] }) {
           </span>
           <span className="lp-line-wrap lp-right">
             <span className="lp-rise" style={{ animationDelay: '300ms' }}>
-              with a <em className="lp-accent-word">vibe.</em>
+              on <em className="lp-accent-word">metlanta.</em>
             </span>
           </span>
         </h1>
@@ -561,8 +561,8 @@ function Footer() {
             </div>
             <div className="footer-col">
               <p className="footer-col-head">Legal</p>
-              <a href="/help">Terms of Service</a>
-              <a href="/help">Privacy Policy</a>
+              <a href="/terms">Terms of Service</a>
+              <a href="/privacy">Privacy Policy</a>
             </div>
           </div>
         </div>
