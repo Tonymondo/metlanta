@@ -50,7 +50,13 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     creator: '@metlanta',
   },
-  icons: { icon: '/favicon.ico' },
+  icons: {
+    icon: [
+      { url: '/metlantalogo.png', type: 'image/png' },
+    ],
+    apple: '/metlantalogo.png',
+    shortcut: '/metlantalogo.png',
+  },
 }
 
 export const viewport: Viewport = {
