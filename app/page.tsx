@@ -15,7 +15,7 @@ function useReveal() {
       (entries) => entries.forEach((e) => {
         if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target) }
       }),
-      { threshold: 0.06 }
+      { threshold: 0, rootMargin: '0px 0px 80px 0px' }
     )
     els.forEach((el) => io.observe(el))
     return () => io.disconnect()

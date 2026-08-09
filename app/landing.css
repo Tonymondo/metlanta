@@ -2043,7 +2043,24 @@ img { display: block; max-width: 100%; }
   gap: 16px;
 }
 @media (max-width: 1024px) { .hn-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 500px)  { .hn-grid { grid-template-columns: 1fr 1fr; gap: 10px; } }
+@media (max-width: 640px) {
+  .hn-grid {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 12px;
+    padding-bottom: 8px;
+  }
+  .hn-grid::-webkit-scrollbar { display: none; }
+  .hn-card {
+    flex: 0 0 46vw;
+    min-width: 150px;
+    max-width: 210px;
+    scroll-snap-align: start;
+  }
+}
 
 .hn-card {
   background: #111;
@@ -2293,3 +2310,108 @@ img { display: block; max-width: 100%; }
 .legal-section a { color: var(--red); text-decoration: none; transition: opacity 0.15s; }
 .legal-section a:hover { opacity: 0.8; }
 .legal-section strong { color: rgba(255,255,255,0.8); font-weight: 700; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MOBILE LAYOUT OVERRIDES (≤ 640px / 768px)
+══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Prevent horizontal overflow from staggered hero text ────────────────── */
+/* .lp-center and .lp-right shrink to content width — if text is wider than  */
+/* the container it extends off-screen causing horizontal scroll.             */
+@media (max-width: 640px) {
+  .lp-line-wrap,
+  .lp-line-wrap.lp-center,
+  .lp-line-wrap.lp-right {
+    align-self: flex-start;
+    max-width: 100%;
+    overflow: hidden;
+  }
+}
+
+/* ── Reveal animations: disable on mobile so content is never invisible ─── */
+@media (max-width: 768px) {
+  .reveal,
+  .reveal.d1,
+  .reveal.d2,
+  .reveal.d3 {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* ── Happening Now section ───────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .hn-section { padding: 48px 0 56px; }
+  .hn-header { flex-direction: column; align-items: flex-start; gap: 12px; margin-bottom: 20px; }
+  .hn-title { font-size: clamp(1.8rem, 7vw, 2.5rem); }
+  .hn-sub { display: none; }
+  .hn-view-all { font-size: 13px; padding: 10px 16px; }
+}
+
+/* ── For Hosts section ───────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .hf-section { padding: 56px 0 0; }
+  .hf-eyebrow { font-size: 10px; }
+  .hf-headline { font-size: clamp(1.7rem, 7vw, 2.8rem); margin-bottom: 28px; }
+  .hf-row { padding: 18px 0; gap: 10px; }
+  .hf-name { font-size: clamp(14px, 4vw, 18px); }
+  .hf-desc { font-size: 13px; line-height: 1.65; }
+  .free-host-band { padding: 48px 0; }
+  .free-host-title { font-size: clamp(2rem, 9vw, 4rem); }
+  .free-host-desc { font-size: 13px; }
+  .free-host-cta-wrap { align-items: flex-start; }
+}
+
+/* ── The Night, In Your Pocket ───────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .np-section { padding: 56px 0; }
+  .np-phone-wrap { display: none; }  /* hide phone mockup on small screens */
+  .np-headline { font-size: clamp(1.8rem, 7vw, 3rem); }
+  .np-body { font-size: 14px; margin-bottom: 24px; }
+}
+
+/* ── Questions, Answered ─────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .qa-section { padding: 56px 0; }
+  .qa-inner { gap: 24px; }
+  .qa-title { position: static; font-size: clamp(2rem, 8vw, 3.5rem); }
+  .qa-q { font-size: 14px; padding: 18px 0; }
+}
+
+/* ── Footer CTA ──────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .footer-cta-section { padding: 56px 0; }
+  .footer-cta-title { font-size: clamp(2rem, 9vw, 3.5rem); line-height: 0.95; }
+  .footer-cta-sub { font-size: 13px; margin-bottom: 24px; }
+  .cta-actions { flex-direction: column; gap: 10px; }
+  .cta-actions .btn-primary,
+  .cta-actions .btn-ghost {
+    width: 100%;
+    justify-content: center;
+    padding: 15px 24px;
+    border-radius: 12px;
+    font-size: 15px;
+  }
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .footer { padding: 40px 0 24px; }
+  .footer-inner { flex-direction: column; gap: 32px; }
+  .footer-cols { flex-wrap: wrap; gap: 28px 40px; }
+  .footer-col { min-width: 120px; }
+  .footer-logo-img { height: 36px; }
+  .footer-bottom { flex-direction: column; gap: 12px; }
+  .footer-bottom-links { flex-wrap: wrap; gap: 12px; }
+}
+
+/* ── Nav ─────────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .nav { background: rgba(5,5,5,0.72); }
+  .nav.scrolled { background: rgba(5,5,5,0.95); }
+  .nav-inner { height: 52px; }
+}
+
+/* ── Global horizontal overflow guard ───────────────────────────────────── */
+html, body { max-width: 100%; overflow-x: hidden; }
