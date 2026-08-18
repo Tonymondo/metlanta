@@ -70,7 +70,8 @@ function Navbar() {
       <header className={`nav${scrolled ? ' scrolled' : ''}`}>
         <div className="nav-inner">
           <a href="/" className="nav-brand">
-            <img src="/metlantalogo.png" alt="Metlanta" className="nav-logo-img" />
+            <img src="/metlantalogo.png" alt="" className="nav-logo-img" aria-hidden />
+            <span className="nav-brand-name">Metlanta</span>
           </a>
           <nav className="nav-links">
             <a href="#events" className="nav-link">Events</a>
@@ -119,7 +120,10 @@ function Navbar() {
               </div>
             </div>
           ) : (
-            <a href="/" onClick={close}><img src="/metlantalogo.png" alt="Metlanta" className="drawer-logo-img" /></a>
+            <a href="/" onClick={close} className="nav-brand">
+              <img src="/metlantalogo.png" alt="" className="nav-logo-img" style={{ height: 26 }} aria-hidden />
+              <span className="nav-brand-name">Metlanta</span>
+            </a>
           )}
           <button className="drawer-close" onClick={close} aria-label="Close">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -226,23 +230,34 @@ function Hero({ events }: { events: DbEvent[] }) {
       {/* Marquee flyer strip */}
       <div className="marquee-wrap">
         <div className="marquee-track">
-          {[...tiles, ...tiles].map((item, i) => (
-            <div
-              key={i}
-              className="marquee-card"
-              style={{ background: (item as { _color?: string })._color ?? '#1a1a1a' }}
-            >
-              {(item as DbEvent).flyer_url && (
-                <Image
-                  src={(item as DbEvent).flyer_url!}
-                  alt={(item as DbEvent).title}
-                  fill
-                  style={{ objectFit: 'cover' }}
-                  sizes="140px"
-                />
-              )}
-            </div>
-          ))}
+          {[...tiles, ...tiles].map((item, i) => {
+            const ev = item as DbEvent
+            const color = (item as { _color?: string })._color ?? '#1a1a1a'
+            return (
+              <a
+                key={i}
+                className="marquee-card"
+                href={ev.id ? `/events/${ev.id}` : '#events'}
+                style={{ background: color }}
+                tabIndex={-1}
+              >
+                {ev.flyer_url && (
+                  <Image
+                    src={ev.flyer_url}
+                    alt={ev.title ?? ''}
+                    fill
+                    style={{ objectFit: 'cover' }}
+                    sizes="140px"
+                  />
+                )}
+                {ev.title && (
+                  <div className="marquee-card-overlay">
+                    <span className="marquee-card-title">{ev.title}</span>
+                  </div>
+                )}
+              </a>
+            )
+          })}
         </div>
       </div>
     </section>
