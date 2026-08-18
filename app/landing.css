@@ -28,7 +28,7 @@
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
-  overscroll-behavior: none;
+  overflow-x: clip;
   overscroll-behavior-y: none;
 }
 body {
@@ -37,9 +37,6 @@ body {
   font-family: var(--font-inter), 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
-  overscroll-behavior: none;
-  overscroll-behavior-y: none;
   line-height: 1.6;
   font-feature-settings: 'kern' 1, 'liga' 1;
 }
@@ -1886,8 +1883,7 @@ img { display: block; max-width: 100%; }
   background: #050505;
   display: flex;
   flex-direction: column;
-  overflow-x: hidden;
-  overscroll-behavior: none;
+  overflow: clip;
 }
 .lp-hero-bg {
   position: absolute;
@@ -2474,10 +2470,8 @@ img { display: block; max-width: 100%; }
 }
 
 /* ── Global overflow + pull-to-refresh guard ─────────────────────────────── */
-html, body {
-  max-width: 100%;
-  overflow-x: hidden;
-  overscroll-behavior: none;
+html {
+  overflow-x: clip;
   overscroll-behavior-y: none;
 }
 

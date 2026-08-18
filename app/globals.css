@@ -15,7 +15,7 @@
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
-  overscroll-behavior: none;
+  overflow-x: clip;
   overscroll-behavior-y: none;
 }
 
@@ -25,9 +25,6 @@ body {
   font-family: var(--font-inter), 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
-  overscroll-behavior: none;
-  overscroll-behavior-y: none;
 }
 
 ::-webkit-scrollbar       { width: 3px; }
